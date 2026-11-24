@@ -1,0 +1,6 @@
+.git/
+.vercel/
+.env*
+public/
+node_modules/
+test/
