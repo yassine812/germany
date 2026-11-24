@@ -12,13 +12,14 @@ function listeningSpeedOptions() {
 }
 
 function exerciseAudioHTML(track){
-  return `<div class="exercise-listen"><label>${icon('headphones')} Piste originale du manuel</label><small>${esc(track.title.replace('Lektion','Chapitre'))}</small><audio controls preload="none" src="${esc(track.src)}" aria-label="${esc(track.title)}"></audio><div class="exercise-audio-tools"><select aria-label="Vitesse de cette écoute" data-exercise-speed>${listeningSpeedOptions()}</select><button data-exercise-replay aria-label="Réécouter cet exercice plus lentement">${icon('repeat')} Plus lent</button></div></div>`;
+  return `<div class="exercise-listen" data-listening-track="${esc(track.id)}"><label>${icon('headphones')} Piste originale du manuel</label><small>${esc(track.title.replace('Lektion','Chapitre'))}</small><audio controls preload="none" src="${esc(track.src)}" aria-label="Audio de l’exercice du livre"></audio><div class="exercise-audio-tools"><select aria-label="Vitesse de cette écoute" data-exercise-speed>${listeningSpeedOptions()}</select><button data-exercise-replay aria-label="Réécouter cet exercice plus lentement">${icon('repeat')} Plus lent</button></div><details class="listening-follow" hidden><summary>Suivre mot par mot</summary><p data-listening-status role="status"></p><div class="listening-transcript" lang="de" tabindex="0" aria-label="Transcription allemande" hidden></div></details></div>`;
 }
 
 function bindExerciseAudio(){
   document.querySelectorAll('.exercise-listen audio').forEach(audio=>{
     if(audio.dataset.exerciseBound)return;audio.dataset.exerciseBound='true';audio.preservesPitch=true;audio.playbackRate=listeningRate;
     audio.addEventListener('ended',()=>{audio.playbackRate=replayRate;audio.closest('.exercise-listen').querySelector('select').value='.6';});
+    bindListeningTranscript(audio);
   });
 }
 
