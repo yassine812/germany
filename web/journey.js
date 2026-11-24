@@ -19,6 +19,10 @@ function recordingJourneyHTML() {
   const nextLevel = levels[levels.indexOf(state.level) + 1];
   const first = all[0], last = all.at(-1);
   const finished = completed === all.length;
+  const assessment = assessments[state.level];
+  const answered = Object.values(assessmentProgress(state.level).pages).filter(Boolean).length;
+  const assessed = answered === assessment.pages.length;
+  const assessmentUrl = '#assessment/' + state.level;
   return `<div class="journey-header"><h1>Mon parcours</h1>${journeyModes()}</div>
     ${journeyLevels()}
     <div class="journey-grid"><section class="journey-trail" aria-label="Carte du niveau ${state.level}">
@@ -26,7 +30,8 @@ function recordingJourneyHTML() {
         <img src="assets/journey.svg" alt="">
         <div><span class="world-kicker">Niveau ${state.level}</span><h2>${levelNames[state.level]}</h2>
         <p>${completed} / ${all.length} leçons terminées</p>
-        ${finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
+        ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${state.level}</a>` :
+          finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
         <button class="primary" data-start="${current.id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : progress(current.id).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
         <p class="world-next">${esc(current.title)} · ${lessonMinutes(current)} min</p>`}</div>
       </header>
@@ -36,10 +41,15 @@ function recordingJourneyHTML() {
         <button class="secondary jump-finish" data-jump-finish>Voir la fin</button>
       </div>
       ${data.units[state.level].map((title, index) => journeyChapter(all, current, title, index, openUnit)).join('')}
+      <section class="level-boundary level-assessment" aria-label="Bilan de fin de niveau">
+        <span class="boundary-icon">${icon('book')}</span><div><strong>Bilan de fin de niveau ${state.level}</strong>
+        <span>${assessment.exercises ? 'Tests du cahier Menschen' : 'Ton PDF Test A1.1'} · ${answered} / ${assessment.pages.length} pages validées</span></div>
+        <a class="secondary" href="${assessmentUrl}${assessed ? '/result' : ''}">${assessed ? 'Voir mon bilan' : answered ? 'Reprendre le bilan' : 'Ouvrir le bilan'}</a>
+      </section>
       <footer class="level-boundary level-finish" id="level-finish" tabindex="-1">
         <span class="boundary-icon">${icon('trophy')}</span>
-        <div><strong>${finished ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${last.id}" class="link-button">${esc(last.title)}</button></div>
-        ${nextLevel ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
+        <div><strong>${finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${last.id}" class="link-button">${esc(last.title)}</button></div>
+        ${nextLevel && assessed ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
       </footer>
     </section><aside class="journey-rail">${dailyPanel()}</aside></div>`;
 }
@@ -145,7 +155,7 @@ function animateJourney() {
     const destination = document.getElementById('map-'+move.to);
     const mascot = destination?.querySelector('.journey-mascot');
     if (!destination || !mascot) return;
-    const origin = document.getElementById('map-'+move.from);
+    const origin = move.from ? document.getElementById('map-'+move.from) : null;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const start = origin?.getBoundingClientRect();
     const end = destination.getBoundingClientRect();

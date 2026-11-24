@@ -56,8 +56,8 @@ function fullPDFPageHTML(b,p){
   return `<div class="pdf-tools"><span>Clique sur un mot pour le traduire.</span><form id="pdf-word-search"><input name="word" maxlength="64" aria-label="Un mot à traduire" placeholder="Traduire un mot…"><button aria-label="Traduire ce mot">${icon('search')}</button></form></div><div class="pdf-stage" id="pdf-stage"><div class="pdf-paper" id="pdf-paper" data-book="${b.id}" data-page="${p.page}" style="width:${readerZoom()*100}%"><img class="pdf-page-image" src="${p.image}" alt="${esc(b.title)}, page ${p.printed||p.page}" draggable="false"><div class="pdf-text-layer" id="pdf-text-layer" lang="de" aria-label="Texte sélectionnable de la page"></div><div class="pdf-exercise-focus" id="pdf-exercise-focus" hidden></div></div></div>`;
 }
 
-function solutionFor(b,t){
-  const p=activePaper(),custom=p?solutionData.custom?.[`${b.id}:${p.page}:${t.id}`]:null;if(custom)return custom;
+function solutionFor(b,t,p=activePaper()){
+  const custom=p?solutionData.custom?.[`${b.id}:${p.page}:${t.id}`]:null;if(custom)return custom;
   if(!t.lesson)return null;
   const section=b.kind==='coursebook'?'Cours':t.section;
   return solutionData.answers?.[`${b.id}:${t.lesson}:${section}:${t.number}`]||null;
@@ -69,7 +69,7 @@ function answerField(key,label,value,multiline=false){
 function exercisePanelHTML(l){
   const p=activePaper();if(!p)return '<p class="muted">Ouvre une page pour répondre.</p>';
   const b=book(p.book),tasks=data.exercisePages?.books?.[b.id]?.[String(p.page)]?.tasks||[],pack=data.bookAudio?.[b.id]?.tracks||[];
-  const pageFinish = !l ? '<button class="study-check" data-finish-page>'+icon('check')+' Valider cette page</button>' : '';
+  const pageFinish = route.page==='assessment' ? assessmentFinishPageHTML() : !l ? '<button class="study-check" data-finish-page>'+icon('check')+' Valider cette page</button>' : '';
   if(!tasks.length){const key=p.book+':'+p.page;return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button><h2>À toi d’écrire</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div><p class="coach-instruction">Le PDF reste ouvert pendant que tu écris.</p>${answerField(key,'Mes réponses ou ma phrase',state.answers[key],true)}<button class="secondary full" data-grammar-key="${key}">Vérifier ma phrase</button><div class="grammar-result" data-grammar-result="${key}" aria-live="polite"></div>${bookAudioHTML(b,p)}${l?`<button class="study-check" data-study-mark="read">${icon('check')}J’ai travaillé cette page</button>`:pageFinish}`;}
   return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button><h2>Exercices & correction</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div><p class="coach-instruction">Choisis un exercice : il est mis en évidence dans le PDF.</p>${tasks.map((t,index)=>{
     const correction=solutionFor(b,t),key=answerBase(p,t),tracks=t.tracks.map(id=>pack.find(a=>a.id===id)).filter(Boolean);
@@ -204,12 +204,12 @@ function bindStudyDivider() {
 function bindClassroom(){
   hideWordCard();
   document.body.classList.remove('extras-open','answers-open');
-  document.body.classList.toggle('in-classroom',(route.page==='lesson'&&route.tab!=='practice')||route.page==='book');
+  document.body.classList.toggle('in-classroom',(route.page==='lesson'&&route.tab!=='practice')||route.page==='book'||(route.page==='assessment'&&route.tab!=='result'));
   appliedPDFCue = null;
   loadPDFWords();bindExerciseAudio();bindStudyDivider();
   if(!document.getElementById('pdf-word-card')){const box=document.createElement('aside');box.id='pdf-word-card';box.className='word-card';box.hidden=true;box.setAttribute('aria-label','Traduction du mot');document.body.append(box);}
 }
-function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');if(panel)panel.innerHTML=exercisePanelHTML(lesson(route.id));loadPDFWords();bindBookAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
+function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():exercisePanelHTML(lesson(route.id));if(route.page==='assessment')saveAssessmentPage(readerState.index);loadPDFWords();bindBookAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
 function holdCurrentPDFCue() {
   const media = document.getElementById('recording');
   if (!media || route.page !== 'lesson') return;

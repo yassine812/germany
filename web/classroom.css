@@ -234,3 +234,31 @@
   .split-classroom .pdf-tools>span {display:none}
   .split-classroom .pdf-tools form {width:100%}
 }
+
+.reader-caption [data-source-pdf] {font-size:.875rem;text-decoration:underline;text-underline-offset:3px}
+#course-document-dialog {width:min(680px,calc(100% - 24px));max-height:90dvh;border:1px solid var(--line);border-radius:17px;padding:20px;background:#fff9ff;color:var(--ink)}
+#course-document-dialog::backdrop {background:#231834aa}
+#course-document-dialog>form {display:flex;justify-content:flex-end}
+.document-dialog-body {display:grid;gap:12px}
+.document-dialog-body dl {margin:0}
+.document-dialog-body dt {font-weight:800;margin-top:10px}
+.document-dialog-body dd {margin:2px 0 0;overflow-wrap:anywhere}
+.assessment-key {display:block;width:100%;height:auto;border-radius:8px}
+.assessment-layout {height:auto;align-items:start}
+.assessment-layout .classroom-document {height:max(425px,calc(100dvh - 150px));position:sticky;top:10px}
+.assessment-layout .classroom-coach {background:var(--world-soft);border-color:var(--world-edge)}
+.assessment-layout .classroom-answers {position:static;overflow:visible;max-height:none;display:block}
+.assessment-layout .answers-close {display:none}
+.assessment-fields {display:grid;gap:10px;margin-block:12px}
+.assessment-actions {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.assessment-actions .study-check {margin:0}
+.assessment-result {max-width:695px;margin:auto;background:var(--world-tint);color:var(--world-deep)}
+.assessment-result>img {width:65px}
+.assessment-result>p {margin:8px 0}
+.level-assessment>div>span {display:block;margin-top:3px;font-size:.875rem}
+@media (max-width:740px) {
+  .assessment-layout {grid-template-rows:auto auto}
+  .assessment-layout .classroom-document {position:static;height:max(405px,65dvh)}
+  .assessment-layout .classroom-coach {display:block;grid-row:2}
+  .assessment-layout .classroom-answers {inset:auto;border:0;box-shadow:none;z-index:auto}
+}

@@ -47,9 +47,16 @@
 .model-controls button,.speak-tools button {min-height:39px;padding:6px 10px;font-size:.875rem}
 .model-controls button .icon,.speak-tools button .icon {width:18px;height:18px}
 .speak-tools {margin-top:12px}
-.speech-feedback,.model-feedback,.speech-privacy {color:var(--world-deep);font-size:.875rem;line-height:1.45;margin-top:7px}
+.speech-feedback,.model-feedback {color:var(--world-deep);font-size:.875rem;line-height:1.45;margin-top:7px}
 .speech-feedback:not(:empty),.model-feedback:not(:empty) {padding:7px 10px;border-radius:7px;background:var(--world-tint)}
 .pronunciation audio[data-recorded-voice] {display:block;width:100%;margin-top:9px}
+.sound-analysis {margin-top:12px}
+.sound-analysis>small {display:block;margin-top:6px;color:var(--world-deep);font-size:.875rem}
+.sound-feedback:not(:empty) {margin-top:9px;background:var(--world-tint);border:1px solid var(--world-edge);padding:10px 12px;border-radius:10px;color:var(--world-deep)}
+.sound-feedback ul {padding:0;margin:6px 0 0;list-style:none}
+.sound-feedback li {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:6px 0}
+.sound-feedback li small {display:block;font-size:.875rem}
+.sound-feedback .secondary {min-height:36px;padding:5px 9px}
 @media (max-width:520px) {
   .in-practice .page {padding-top:12px}
   .practice-heading {margin-bottom:10px}
