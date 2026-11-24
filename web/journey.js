@@ -32,17 +32,17 @@ function recordingJourneyHTML() {
     <h1>Mon parcours</h1>
     ${current ? `<button class="journey-locate" data-journey-locate>${icon('path')} Ma position</button>` : ''}
   </div>
-  <nav class="journey-shortcuts" aria-label="Accès aux niveaux">
-    ${levels.map(level => `<a data-world="${level}" href="#path/${level}">${level===preparationLevel ? levelLabel(level) : level}</a>`).join('')}
-  </nav>
-  <div class="journey-grid">
+  <div class="journey-toolbar">
+    <nav class="journey-shortcuts" aria-label="Accès aux niveaux">
+      ${levels.map(level => `<a data-world="${level}" href="#path/${level}">${level===preparationLevel ? levelLabel(level) : level}</a>`).join('')}
+    </nav>
     <details class="journey-daily">
       <summary>${icon('flame')} Objectif du jour</summary>
       ${dailyPanel()}
     </details>
-    <div class="journey-trail" aria-label="Parcours complet d’allemand">
-      ${zones.map(({level, stops}, index) => journeyZone(level, stops, index, current)).join('')}
-    </div>
+  </div>
+  <div class="journey-trail" aria-label="Parcours complet d’allemand">
+    ${zones.map(({level, stops}, index) => journeyZone(level, stops, index, current)).join('')}
   </div>`;
 }
 
@@ -78,7 +78,9 @@ function journeyZone(level, stops, index, current) {
   const stepGap = 108;
   const height = (stops.length + 1) * stepGap;
   const positions = stops.map((_, i) => [50 + 9 * Math.sin((i + 1) * 1.47), (i + 1) * stepGap + 42]);
-  const points = [[50,0], [50,42], ...positions, [50,height]];
+  const points = [[50,42], ...positions];
+  if (index > 0) points.unshift([50,0]);
+  if (index < levels.length-1) points.push([50,height]);
   const path = points.map(([x,y], i) => {
     if (!i) return `M ${x*6} ${y}`;
     const [prevX,prevY] = points[i-1];

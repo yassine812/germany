@@ -32,14 +32,16 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 }
 .journey-locate .icon {width:19px;height:19px}
 .journey-locate:hover,.journey-shortcuts a:hover {text-decoration:underline;text-underline-offset:4px}
-.journey-shortcuts {display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;margin:0 0 16px}
+.journey-toolbar {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 20px;margin-bottom:14px;
+}
+.journey-shortcuts {display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
 .journey-shortcuts a {
   display:inline-flex;align-items:center;gap:5px;color:var(--world-deep);font-weight:800;font-size:.875rem;text-decoration:none;
 }
 .journey-shortcuts a::before {content:'';width:7px;height:7px;border-radius:50%;background:var(--world)}
-.journey-grid {display:grid;grid-template-columns:minmax(0,1fr) 216px;gap:24px;align-items:start}
 .journey-trail {
-  min-width:0;grid-column:1;grid-row:1;border-block:1px solid #dccfe8;
+  min-width:0;overflow:clip;border:1px solid #dccfe8;border-radius:clamp(16px,2.4vw,28px);
   container:journey-trail / inline-size;
 }
 .journey-zone {
@@ -79,7 +81,7 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 .journey-step:focus-visible,.journey-locate:focus-visible {outline:2px solid #503283;outline-offset:5px;border-radius:50%}
 .journey-step:hover strong,.journey-step:focus-visible strong {text-decoration:underline;text-underline-offset:4px}
 .journey-step-copy {
-  position:absolute;left:calc(100% + 16px);top:50%;transform:translateY(-50%);width:min(32cqw,245px);
+  position:absolute;left:calc(100% + 16px);top:50%;transform:translateY(-50%);width:min(32cqw,280px);
   display:grid;gap:4px;text-align:left;color:var(--world-deep);line-height:1.2;
 }
 .journey-marker .journey-step-copy {left:43px}
@@ -92,16 +94,22 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
   border:2px solid #cd955a;border-radius:50%;background:#ffe9c0;box-shadow:0 3px 6px #543e2833;pointer-events:none;
 }
 
-.journey-daily {position:sticky;top:16px;grid-column:2;grid-row:1;border-block:1px solid #dccfe8;color:#593b71}
+.journey-daily {position:relative;z-index:5;margin-inline-start:auto;color:#593b71}
 .journey-daily summary {
-  display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:10px 1px;
+  display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:7px 10px;
+  border:1px solid #dccfe8;border-radius:9px;background:#fbf6fc;
   font:850 .92rem Nunito,system-ui,sans-serif;
 }
+.journey-daily summary:hover,.journey-daily[open] summary {background:#f1e6f7}
 .journey-daily summary::-webkit-details-marker {display:none}
 .journey-daily summary .icon {width:18px;height:18px}
-.journey-daily summary::after {content:'+';margin-left:auto}
+.journey-daily summary::after {content:'+';margin-inline-start:3px}
 .journey-daily[open] summary::after {content:'−'}
-.daily-card {padding-bottom:11px;color:#593b71}
+.daily-card {
+  position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;width:min(310px,calc(100vw - 36px));
+  padding:14px;border:1px solid #dccfe8;border-radius:12px;background:#fbf6fc;color:#593b71;
+  box-shadow:0 10px 20px #35224a1f;
+}
 .daily-card>p {margin:4px 0;font-size:.84rem}
 .daily-card .week-text {display:none}
 .daily-card .week-strip {padding:0;margin:9px 0 0;border:0;background:none}
@@ -121,16 +129,12 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
   .journey-zone .journey-step-copy {left:calc(100% + 13px);right:auto;text-align:left;width:min(61cqw,275px)}
   .journey-zone .journey-marker .journey-step-copy {left:40px}
 }
-@media (max-width:1100px) {
-  .journey-grid {gap:14px;grid-template-columns:minmax(0,1fr) 175px}
-}
-@media (max-width:860px) {
-  .journey-grid {display:flex;flex-direction:column;align-items:stretch;gap:10px}
-  .journey-daily {position:static}
-}
 @media (max-width:560px) {
   .topbar {height:62px}
-  .journey-shortcuts {gap:8px 14px;margin-bottom:10px}
+  .journey-shortcuts {gap:8px 14px}
+  .journey-toolbar {align-items:flex-start;flex-direction:column}
+  .journey-daily {margin-inline-start:0}
+  .daily-card {inset-inline:0 auto}
   .journey-marker-icon,.journey-step {width:47px;height:47px}
   .journey-zone .journey-marker .journey-step-copy {left:36px}
   .journey-mascot {width:36px;height:36px;left:12px;top:-55px}
