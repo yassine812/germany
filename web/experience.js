@@ -27,7 +27,9 @@ let appliedPDFCue = null;
 function pageSyncHTML(l) {
   return `<div class="page-sync">
     <span data-pdf-sync-status>${icon('book')} PDF du cours</span>
-    ${l?.pageCues?.length ? '<span class="sync-badge" data-following-course>Suit le cours</span><button class="link-button" data-rejoin-course hidden>Reprendre le suivi</button>' : ''}
+    ${route.page==='lesson' && route.tab==='exercise'
+      ? '<span class="sync-badge">Page d’exercice</span>'
+      : l?.pageCues?.length ? '<span class="sync-badge" data-following-course>Suit le cours</span><button class="link-button" data-rejoin-course hidden>Reprendre le suivi</button>' : ''}
   </div>`;
 }
 
@@ -46,7 +48,7 @@ function currentPDFCue(media, l) {
 }
 
 function syncCoursePage(media) {
-  if (route.page !== 'lesson' || media.seeking || wordInteractionOpen() || document.activeElement?.matches('textarea,input:not([type="checkbox"]):not([data-clip-position]),select')) return;
+  if (route.page !== 'lesson' || route.tab==='exercise' || media.seeking || wordInteractionOpen() || document.activeElement?.matches('textarea,input:not([type="checkbox"]):not([data-clip-position]),select')) return;
   const l = lesson(route.id);
   if (readerState?.lessonId !== l?.id) return;
   const cue = currentPDFCue(media, l);
@@ -88,6 +90,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('click',e=>{
   const start=e.target.closest('[data-start]');if(start&&lesson(start.dataset.start)){state.unit=lesson(start.dataset.start).unit;save();}
+  if (e.target.closest('[data-continue-exercise]')) openNextLessonExercise(lesson(route.id));
   const marked=e.target.closest('[data-study-mark]');
   if(marked){
     const saved = progress(route.id);
@@ -97,7 +100,17 @@ document.addEventListener('click',e=>{
     save();
     updateCourseFinish();
     marked.classList.add('checked');
-    marked.innerHTML=icon('check')+(key==='watch'?'Leçon écoutée':'Exercices terminés');
+    if (key==='watch') {
+      marked.disabled = true;
+      marked.innerHTML = icon('check')+'Écoute terminée';
+      const media = $('#recording');
+      const rate = media?.playbackRate || 1;
+      media?.pause();
+      advanceCoursePassage(lesson(route.id),rate);
+    } else {
+      marked.innerHTML = icon('check')+'Exercices terminés';
+      if (route.tab==='exercise') openNextLessonExercise(lesson(route.id));
+    }
   }
   const replay=e.target.closest('[data-exercise-replay]');
   if(replay){const area=replay.closest('.exercise-listen'),audio=area.querySelector('audio');area.querySelector('select').value='.6';audio.playbackRate=replayRate;audio.currentTime=0;audio.play().catch(()=>toast('Appuie sur lecture pour écouter.'));}

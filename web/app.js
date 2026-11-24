@@ -158,17 +158,18 @@ function bindMedia() {
     updateCourseFinish();
     const button = $('[data-study-mark="watch"]');
     if (button) {
+      button.disabled = true;
       button.classList.add('checked');
-      button.innerHTML = icon('check')+'Cours écouté';
+      button.innerHTML = icon('check')+'Écoute terminée';
     }
     advanceCoursePassage(l,v.playbackRate);
   };
   v.addEventListener('loadedmetadata',()=>{
-    const position = linkedPageCue(l)?.time ?? progress(l.id).position;
+    const position = (route.tab==='exercise' ? null : linkedPageCue(l)?.time) ?? progress(l.id).position;
     if (start > 0 || position > 0) v.currentTime = position>=start && position<end-2 ? position : start;
     const ready = () => {
       if (route.id!==l.id || !v.isConnected) return;
-      if (route.bookId) holdCurrentPDFCue();
+      if (route.bookId && route.tab!=='exercise') holdCurrentPDFCue();
       syncCoursePage(v);
       updatePosition();
       const play = $('[data-clip-play]',card);

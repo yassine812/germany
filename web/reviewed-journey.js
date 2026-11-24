@@ -241,16 +241,16 @@ function replaceLessonRoute(target) {
   route = parseRoute();
 }
 
-function nextCoursePassage(l, unfinishedOnly = false) {
-  const parts = reviewedGroup(l).parts;
-  const following = parts.slice(parts.findIndex(clip=>clip.id===l.id)+1);
-  return unfinishedOnly ? following.find(clip=>!state.lessons[clip.id]?.watch && !isDone(clip.id)) : following[0];
-}
-
 function advanceCoursePassage(l, rate) {
-  if (route.page!=='lesson' || route.id!==l.id || route.tab==='practice') return;
-  const next = nextCoursePassage(l,true);
-  if (!next) return;
+  if (route.page!=='lesson' || route.id!==l.id || ['exercise','practice'].includes(route.tab)) return;
+  const {parts} = reviewedGroup(l);
+  const index = parts.findIndex(clip=>clip.id===l.id);
+  const next = [...parts.slice(index+1),...parts.slice(0,index)]
+    .find(clip=>!state.lessons[clip.id]?.watch && !isDone(clip.id));
+  if (!next) {
+    openNextLessonExercise(l);
+    return;
+  }
   continuingPlayback = {id:next.id,rate};
   readerState = null;
   quiz = null;
@@ -280,19 +280,8 @@ function chapterListHTML(l) {
   </label>`;
 }
 
-function passageListHTML(l) {
-  const {parts} = reviewedGroup(l);
-  if (parts.length < 2) return '';
-  const next = nextCoursePassage(l);
-  return `<div class="course-passages">
-    <label>Passage <select aria-label="Passage de cette leçon" data-course-passage>${parts.map((clip,i)=>
-      `<option value="${clip.id}" ${clip.id===l.id?'selected':''}>${i+1} / ${parts.length} · ${lessonMinutes(clip)} min${state.lessons[clip.id]?.watch?' ✓':''}</option>`).join('')}</select></label>
-    ${next?`<button class="link-button" data-start="${next.id}">Passage suivant</button>`:''}
-  </div>`;
-}
-
 document.addEventListener('change',event=>{
-  if (!event.target.matches('[data-course-passage], [data-course-chapter]')) return;
+  if (!event.target.matches('[data-course-chapter]')) return;
   readerState = null;
   quiz = null;
   navigate('#lesson/'+event.target.value+'/watch');

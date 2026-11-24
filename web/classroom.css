@@ -132,8 +132,6 @@
 .classroom-heading {height:auto;min-height:72px;padding-block:9px}
 .classroom-heading small {color:var(--world-deep);font-size:.875rem;letter-spacing:0}
 .classroom-heading h1 {white-space:normal;overflow-wrap:anywhere;font-size:clamp(1.06rem,2vw,1.4rem)}
-.classroom-heading .practice-entry {background:var(--world-tint);border-color:var(--world-edge);color:var(--world-deep);font-size:.875rem}
-.classroom-heading .practice-entry:hover {background:var(--world-bright)}
 .split-classroom {
   height:auto;min-height:0;gap:0;align-items:start;
   grid-template-columns:minmax(0,calc(var(--study-split,50%) - 9px)) 18px minmax(0,1fr);
@@ -193,6 +191,7 @@
   color:white;background:#ffffff1c;border:1px solid #ffffff40;border-radius:8px;
 }
 .split-classroom .classroom-video-actions .link-button:hover,.split-classroom .classroom-video-actions .link-button.checked {background:var(--world-bright);color:var(--world-deep)}
+.split-classroom .classroom-video-actions [data-continue-exercise] {background:var(--world-bright);color:var(--world-deep);font-weight:800}
 .split-classroom .classroom-video-actions .link-button .icon {width:17px;height:17px}
 .split-classroom .classroom-answers,.split-classroom .classroom-extras {
   position:static;overflow:visible;max-height:none;display:block;background:var(--world-soft);scroll-margin-top:14px;
@@ -215,9 +214,6 @@
 @media (max-width:740px) {
   .in-classroom .page {padding:0 10px 85px}
   .classroom-heading {min-height:66px;gap:7px}
-  .classroom-heading .practice-entry {font-size:.8125rem;padding:6px 8px;white-space:normal}
-  .classroom-heading .practice-entry .icon {width:17px;height:17px}
-  .classroom-heading:has(.primary:not([hidden])) .practice-entry {display:none}
   .split-classroom {grid-template-columns:minmax(0,1fr);grid-template-rows:auto;gap:9px}
   .study-divider {display:none}
   .split-classroom .classroom-coach {display:contents}
@@ -347,14 +343,6 @@ body:has(.reader.is-expanded) {overflow:hidden}
 
 .course-chapters {display:grid;min-width:0;gap:4px;margin:0 0 9px;font-size:.82rem;color:white}
 .course-chapters select {width:100%;min-width:0;padding:7px 9px;color:#2d2640;background:#fbf8ff;border:1px solid #ffffff40;border-radius:8px}
-.course-passages {
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
-  margin:10px 0 3px;padding:8px 10px;background:#ffffff17;color:white;border-radius:9px;
-}
-.course-passages label {display:flex;align-items:center;gap:6px;font-size:.82rem}
-.course-passages select {color:#2d2640;background:#fbf8ff;padding:5px 7px}
-.course-passages .link-button {color:white;font-size:.82rem;text-decoration:underline}
-.course-passages .link-button:hover {color:var(--world-bright)}
 
 .clip-controls {display:flex;align-items:center;gap:9px;padding:6px 9px;color:white;background:#141d31}
 .clip-controls button {display:grid;place-items:center;width:34px;height:34px;flex:none;border:0;border-radius:7px;color:white;background:#ffffff14}

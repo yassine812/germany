@@ -21,8 +21,8 @@ function findPageLesson(bookId, page) {
   return pageLessons.get(bookId + ':' + page)?.l;
 }
 
-function lessonPageURL(l, bookId, page) {
-  return '#lesson/' + l.id + '/watch/' + bookId + '/' + page;
+function lessonPageURL(l, bookId, page, tab = 'watch') {
+  return '#lesson/' + l.id + '/' + tab + '/' + bookId + '/' + page;
 }
 
 function libraryBookURL(b) {

@@ -26,7 +26,6 @@ function classroomLessonHTML(l){
   return `<div class="classroom-heading">
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
     <div><small>${level} · ${prep ? 'Leçon' : esc(recordingFor(l)?.title)+' · Chapitre'} ${number}</small><h1>${esc(group.title)}</h1></div>
-    <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Exercice oral</button>
     <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : (prep ? 'Terminer la leçon' : 'Terminer ce chapitre')}</button>
   </div>
   <div data-lesson-progress>${lessonActivityHTML(l)}</div>
@@ -38,9 +37,9 @@ function classroomLessonHTML(l){
         <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Leçon · Enregistrement</h2>
         ${chapterListHTML(l)}
         ${mediaHTML(l)}
-        ${passageListHTML(l)}
         <div class="classroom-video-actions">
-          <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
+          <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch" ${p.watch?'disabled':''}>${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
+          <button class="link-button" data-continue-exercise ${route.tab!=='exercise'&&nextLessonExercise(l)?'':'hidden'}>${icon('chevron')} Continuer vers l’exercice</button>
           <button class="link-button" data-jump-exercises ${lessonExerciseIndex()<0?'hidden':''}>${icon('book')} ${pdfTasks(activePaper()).length?'Exercices PDF de la page':'Voir les exercices PDF'}</button>
           <button class="link-button" data-open-lesson-notes>${icon('book')} Mes notes</button>
         </div>
@@ -151,12 +150,29 @@ function lessonActivities(l) {
   const group = reviewedGroup(l);
   const saved = group.parts.map(clip=>state.lessons[clip.id]);
   const complete = groupDone(group);
-  const steps = [{key:'lesson',title:'Leçon',done:saved.every(p=>p?.watch || p?.completed)}];
+  const steps = [{id:'watch',key:'lesson',title:'Leçon',done:saved.every(p=>p?.watch || p?.completed)}];
   if (group.parts.some(lessonHasExercises)) {
-    steps.push({key:'exercise',title:'Exercices PDF',done:complete || saved.some(p=>p?.read)});
+    steps.push({id:'read',key:'exercise',title:'Exercices PDF',done:complete || saved.some(p=>p?.read)});
   }
-  steps.push({key:'exercise',title:'Exercice oral',done:saved.some(p=>p?.practice || p?.completed)});
+  steps.push({id:'practice',key:'exercise',title:'Exercice oral',done:saved.some(p=>p?.practice || p?.completed)});
   return steps;
+}
+
+function nextLessonExercise(l) {
+  const step = lessonActivities(l).find(activity=>!activity.done);
+  return step?.id==='watch' ? null : step?.id;
+}
+
+function openNextLessonExercise(l) {
+  const next = nextLessonExercise(l);
+  if (next==='practice') {
+    navigate('#lesson/'+l.id+'/practice');
+  } else if (next==='read') {
+    const clip = lessonHasExercises(l) ? l : reviewedGroup(l).parts.find(lessonHasExercises);
+    const paper = clip===l && pdfTasks(activePaper()).length ? activePaper() :
+      getPages(clip).find(page=>pdfTasks(page).length);
+    navigate(lessonPageURL(clip,paper.book,paper.page,'exercise'));
+  }
 }
 
 function courseProgressHTML(label, percent) {
@@ -185,6 +201,8 @@ function updateCourseFinish() {
   if (!l) return;
   const button = $('[data-course-completion]');
   if (button) button.hidden = !canFinishLesson(l);
+  const next = $('[data-continue-exercise]');
+  if (next) next.hidden = route.tab==='exercise' || !nextLessonExercise(l);
   const activity = $('[data-lesson-progress]');
   if (activity) activity.innerHTML = lessonActivityHTML(l);
 }
@@ -194,9 +212,11 @@ function exercisePanelHTML(l) {
   const printed = pdfTasks(p);
   if (!printed.length) return '';
   const b = book(p.book);
+  const readLabel = l && route.tab==='exercise' && lessonActivities(l).some(step=>step.id==='practice' && !step.done) ?
+    'Terminer et passer à l’oral' : l && progress(l.id).read ? 'Exercices terminés' : 'Terminer les exercices';
   const pageFinish = route.page === 'assessment' ? assessmentFinishPageHTML() :
     l ? `<button class="study-check ${progress(l.id).read?'checked':''}" data-study-mark="read">${icon('check')}
-      ${progress(l.id).read ? 'Exercices terminés' : 'Terminer les exercices'}</button>` :
+      ${readLabel}</button>` :
     '<button class="study-check" data-finish-page>' + icon('check') + ' Valider cette page</button>';
   return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button>
     <h2>Exercices PDF de la page</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div>
@@ -344,7 +364,15 @@ function bindClassroom(){
   document.body.classList.toggle('in-classroom',(route.page==='lesson'&&route.tab!=='practice')||route.page==='book'||(route.page==='assessment'&&route.tab!=='result'));
   appliedPDFCue = null;
   loadPDFWords();bindPaperAspect();bindExerciseAudio();bindStudyDivider();
+  if (route.page==='lesson' && route.tab==='exercise') requestAnimationFrame(focusExercisePanel);
   if(!document.getElementById('pdf-word-card')){const box=document.createElement('aside');box.id='pdf-word-card';box.className='word-card';box.hidden=true;box.setAttribute('aria-label','Traduction du mot');document.body.append(box);}
+}
+
+function focusExercisePanel() {
+  const answers = $('#classroom-answers');
+  if (!answers || answers.hidden) return;
+  answers.focus({preventScroll:true});
+  answers.scrollIntoView({block:'nearest'});
 }
 function afterPDFPageChange() {
   const panel = $('#classroom-answers');
@@ -479,9 +507,7 @@ document.addEventListener('click',e=>{
       readerState.index = index;
       updateReader();
     }
-    const answers = $('#classroom-answers');
-    answers.focus({preventScroll:true});
-    answers.scrollIntoView({block:'start'});
+    focusExercisePanel();
   }
 
 });
