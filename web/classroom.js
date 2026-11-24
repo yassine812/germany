@@ -346,6 +346,34 @@ function holdCurrentPDFCue() {
 function hideWordCard(){pdfLookupSequence++;pdfWordResult=null;hideWordActions();const card=document.getElementById('pdf-word-card');if(card)card.hidden=true;}
 const wordLookupCache=new Map();
 
+const wordDictionaryShards = new Map();
+const nativeWordPronunciations = {
+  igel:{url:'https://upload.wikimedia.org/wikipedia/commons/8/86/De-Igel.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original',source:'https://commons.wikimedia.org/wiki/File:De-Igel.ogg',
+    text:'Igel',artist:'Jeuwre',license:'CC BY-SA 4.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/4.0/'}
+};
+
+async function getWordDetails(word) {
+  const key = word.normalize('NFC').toLocaleLowerCase('de-DE');
+  const pronunciation = nativeWordPronunciations[key];
+  try {
+    const response = await fetch('/api/word?q='+encodeURIComponent(word),{signal:AbortSignal.timeout(10500)});
+    if (response.ok) {
+      const result = await response.json();
+      return {...result,pronunciation:result.pronunciation || pronunciation};
+    }
+  } catch {}
+  const letter = key.normalize('NFD').replace(/\p{M}/gu,'')[0];
+  const bucket = /^[a-z]$/.test(letter) ? letter : 'other';
+  if (!wordDictionaryShards.has(bucket)) {
+    const response = await fetch('assets/dictionary/'+bucket+'.json',{signal:AbortSignal.timeout(5000)}).catch(()=>null);
+    if (response?.ok) wordDictionaryShards.set(bucket,await response.json());
+  }
+  const entry = wordDictionaryShards.get(bucket)?.[key];
+  if (!entry && !pronunciation) throw Error('Ce mot est momentanément indisponible. Essaie sa forme de base.');
+  return {word,lemma:entry?.word || word,translations:entry?.fr || [],
+    ipa:entry?.ipa || '',dictionarySource:'FreeDict / WikDict',examples:[],pronunciation};
+}
+
 async function openPDFWord(raw,anchor=null,play=false){
   const word=cleanPDFWord(raw);if(!word||word.length>64)return;
   const card=document.getElementById('pdf-word-card');if(!card)return;
@@ -356,13 +384,12 @@ async function openPDFWord(raw,anchor=null,play=false){
   try{
     let result=wordLookupCache.get(word);
     if(!result){
-      const r=await fetch('/api/word?q='+encodeURIComponent(word));result=await r.json();
-      if(!r.ok)throw Error(result.error||'Traduction indisponible');
+      result=await getWordDetails(word);
       if(wordLookupCache.size>=250)wordLookupCache.delete(wordLookupCache.keys().next().value);
       wordLookupCache.set(word,result);
     }
     if(sequence!==pdfLookupSequence)return;pdfWordResult=result;
-    card.innerHTML=`<button class="word-close" data-close-word aria-label="Fermer">×</button><small>ALLEMAND · FRANÇAIS</small><h2 lang="de">${esc(result.word)}</h2>${result.lemma!==result.word?`<p class="word-lemma">Forme de ${esc(result.lemma)}</p>`:''}<p class="word-translation">${result.translations.slice(0,4).map(esc).join(' · ')}</p>${result.ipa?`<p class="word-ipa">[${esc(result.ipa)}]</p>`:''}<div class="word-buttons"><button class="primary" data-pronounce-word>${icon('volume')}${result.pronunciation?.text&&normalizedAnswer(result.pronunciation.text)!==normalizedAnswer(result.word)?'Écouter : '+esc(result.pronunciation.text):'Écouter le mot'}</button><button class="secondary" data-pronounce-word="slow">Plus lent</button></div>${result.examples.map(e=>`<div class="word-example"><strong>Dans une phrase</strong><p lang="de">${esc(e.de)}</p><p>${esc(e.fr)}</p><a href="${esc(e.url)}" target="_blank" rel="noopener">Tatoeba · ${esc(e.author||'contributeurs')} / ${esc(e.translationAuthor||'contributeurs')} · ${esc(e.license||'CC BY')}</a></div>`).join('')}${!result.examples.length?'<p class="word-example">Pas d’exemple trouvé pour cette forme. Essaie le mot de base.</p>':''}<div class="word-credits"><a href="${result.dictionarySource==='MyMemory'?'https://mymemory.translated.net/':'https://download.freedict.org/dictionaries/deu-fra/2025.11.23/'}" target="_blank" rel="noopener">${esc(result.dictionarySource||'Dictionnaire')}</a><a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Données FreeDict/WikDict · CC BY-SA 3.0</a>${result.pronunciation?`<a href="${esc(result.pronunciation.source)}" target="_blank" rel="noopener">Audio : ${esc(result.pronunciation.artist||'Wikimedia Commons')} · ${esc(result.pronunciation.license)}</a>`:''}</div>`;
+    card.innerHTML=`<button class="word-close" data-close-word aria-label="Fermer">×</button><small>ALLEMAND · FRANÇAIS</small><h2 lang="de">${esc(result.word)}</h2>${result.lemma!==result.word?`<p class="word-lemma">Forme de ${esc(result.lemma)}</p>`:''}<p class="word-translation">${result.translations.slice(0,4).map(esc).join(' · ')}</p>${result.ipa?`<p class="word-ipa">[${esc(result.ipa)}]</p>`:''}<div class="word-buttons"><button class="primary" data-pronounce-word>${icon('volume')}${result.pronunciation?.text&&normalizedAnswer(result.pronunciation.text)!==normalizedAnswer(result.word)?'Écouter : '+esc(result.pronunciation.text):'Écouter le mot'}</button><button class="secondary" data-pronounce-word="slow">Plus lent</button></div>${result.examples.map(e=>`<div class="word-example"><strong>Dans une phrase</strong><p lang="de">${esc(e.de)}</p><p>${esc(e.fr)}</p><a href="${esc(e.url)}" target="_blank" rel="noopener">Tatoeba · ${esc(e.author||'contributeurs')} / ${esc(e.translationAuthor||'contributeurs')} · ${esc(e.license||'CC BY')}</a></div>`).join('')}${!result.examples.length?'<p class="word-example">Pas d’exemple trouvé pour cette forme. Essaie le mot de base.</p>':''}<div class="word-credits"><a href="${result.dictionarySource==='MyMemory'?'https://mymemory.translated.net/':'https://download.freedict.org/dictionaries/deu-fra/2025.11.23/'}" target="_blank" rel="noopener">${esc(result.dictionarySource||'Dictionnaire')}</a><a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Données FreeDict/WikDict · CC BY-SA 3.0</a>${result.pronunciation?`<a href="${esc(result.pronunciation.source)}" target="_blank" rel="noopener">Audio : ${esc(result.pronunciation.artist||'Wikimedia Commons')} · ${esc(result.pronunciation.license)}</a>${result.pronunciation.licenseUrl?` · <a href="${esc(result.pronunciation.licenseUrl)}" target="_blank" rel="noopener">Licence</a>`:''}`:''}</div>`;
     }catch(error){
     if(sequence!==pdfLookupSequence)return;
     pdfWordResult={word,lemma:word};
@@ -374,7 +401,14 @@ async function pronouncePDFWord(slow=false){
   if(!pdfWordResult)return;const result=pdfWordResult,lemma=result.lemma;
   const keys=[result.word,'der '+result.word,'die '+result.word,'das '+result.word,...(normalizedAnswer(result.word)===normalizedAnswer(lemma)?[lemma,'der '+lemma,'die '+lemma,'das '+lemma]:[])];
   const cached=keys.map(k=>wordAudio[k]?.[state.voice||'female']).find(Boolean),src=cached||result.pronunciation?.url;
-  if(src){if(wordPlayer)wordPlayer.pause();wordPlayer=new Audio(src);stopOtherMedia(wordPlayer);wordPlayer.preservesPitch=true;wordPlayer.playbackRate=slow?.7:.9;wordPlayer.play().catch(()=>toast('La prononciation de ce mot est momentanément indisponible.'));return;}
+  if(src){
+    if(wordPlayer)wordPlayer.pause();
+    const player = new Audio(src);
+    wordPlayer=player;stopOtherMedia(player);player.preservesPitch=true;player.playbackRate=slow?.7:.9;
+    try {await player.play();return;} catch {
+      if(wordPlayer!==player)return;
+    }
+  }
   if('speechSynthesis' in window){const voice=speechSynthesis.getVoices().find(v=>v.lang.startsWith('de'));if(voice){stopOtherMedia(null);speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(result.word);utterance.voice=voice;utterance.lang='de-DE';utterance.rate=slow?.65:.85;speechSynthesis.speak(utterance);return;}}
   toast('Pas d’enregistrement disponible pour cette forme. Essaie le mot de base.');
 }
@@ -386,7 +420,12 @@ document.addEventListener('input',e=>{
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-reader]'))holdCurrentPDFCue();
   const summary=e.target.closest('.guided-task>summary');if(summary&&!summary.parentElement.open){holdCurrentPDFCue();focusPDFExercise(summary.parentElement.dataset.guidedTask);}
-  const word=e.target.closest('[data-pdf-word]');if(word){const selection=window.getSelection()?.toString().trim();openPDFWord(selection&&selection.length<65?selection:word.dataset.pdfWord,word);return;}
+  const word=e.target.closest('[data-pdf-word]');if(word){
+    const selection=window.getSelection()?.toString().trim();
+    if(selection&&selection.length<65) openPDFWord(selection,word);
+    else {hideWordCard();showWordActions(word,true);}
+    return;
+  }
   if(e.target.closest('[data-close-word]'))hideWordCard();
   const pronounce=e.target.closest('[data-pronounce-word]');if(pronounce)pronouncePDFWord(pronounce.dataset.pronounceWord==='slow');
   const focus=e.target.closest('[data-focus-task]');if(focus){holdCurrentPDFCue();focusPDFExercise(focus.dataset.focusTask);}
@@ -411,6 +450,5 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{if(e.target.id==='reader-page')holdCurrentPDFCue();});
 document.addEventListener('focusin',e=>{if(e.target.matches('[data-guided-answer]'))lastGuidedField=e.target;});
 document.addEventListener('submit',e=>{if(e.target.id==='pdf-word-search'){e.preventDefault();openPDFWord(new FormData(e.target).get('word'));}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')hideWordCard();});
 async function checkClassroomVersion(){if(!window.DEUTSCHWEG_BUILD)return;try{const r=await fetch('/api/version',{cache:'no-store'}),v=await r.json();if(v.id!==window.DEUTSCHWEG_BUILD&&!document.getElementById('version-refresh')){const button=document.createElement('button');button.id='version-refresh';button.className='version-refresh';button.textContent='Une nouvelle version est prête · Actualiser';button.onclick=()=>{persistMedia();save();location.reload()};document.body.append(button);}}catch{}}
 window.addEventListener('focus',checkClassroomVersion);setInterval(checkClassroomVersion,90000);

@@ -1,7 +1,7 @@
 'use strict';
 
 let wordHoverTimer;
-let wordDismissTimer;
+let wordPositionFrame;
 let hoveredPDFWord;
 
 function paperView() {
@@ -34,64 +34,85 @@ function cleanPDFWord(value) {
 
 function hideWordActions() {
   clearTimeout(wordHoverTimer);
-  clearTimeout(wordDismissTimer);
+  hoveredPDFWord?.classList.remove('is-word-anchored');
   hoveredPDFWord = null;
   const actions = $('#pdf-word-actions');
   if (actions) actions.hidden = true;
 }
 
-function showWordActions(target) {
+function wordInteractionOpen() {
+  const menu = $('#pdf-word-actions');
+  const result = $('#pdf-word-card');
+  return Boolean((menu && !menu.hidden) || (result && !result.hidden));
+}
+
+function positionWordActions() {
+  const area = $('#pdf-word-actions');
+  if (!area || area.hidden || !hoveredPDFWord?.isConnected) return;
+  const bounds = hoveredPDFWord.getBoundingClientRect();
+  if (bounds.bottom < 0 || bounds.top > innerHeight) return;
+  const height = area.offsetHeight;
+  area.style.left = Math.max(8,Math.min(innerWidth-area.offsetWidth-8,bounds.left))+'px';
+  area.style.top = (bounds.bottom+height+12<innerHeight ? bounds.bottom+4 : Math.max(8,bounds.top-height-4))+'px';
+}
+
+function showWordActions(target, focus = false) {
+  clearTimeout(wordHoverTimer);
   const word = cleanPDFWord(target.dataset.pdfWord);
   if (!word || word.length > 64 || !target.isConnected) return;
+  hoveredPDFWord?.classList.remove('is-word-anchored');
+  hoveredPDFWord = target;
+  target.classList.add('is-word-anchored');
   let area = $('#pdf-word-actions');
   if (!area) {
     area = document.createElement('div');
     area.id = 'pdf-word-actions';
     area.className = 'pdf-word-actions';
+    area.setAttribute('role','group');
     document.body.append(area);
   }
-  area.innerHTML = `<strong lang="de">${esc(word)}</strong><button data-pdf-word-action="translate">Traduire</button>
-    <button data-pdf-word-action="listen" aria-label="Écouter ${esc(word)}">${icon('volume')} Écouter</button>`;
+  area.setAttribute('aria-label','Actions pour '+word);
+  area.innerHTML = `<strong lang="de">${esc(word)}</strong><button type="button" data-pdf-word-action="translate">Traduire</button>
+    <button type="button" data-pdf-word-action="listen" aria-label="Écouter ${esc(word)}">${icon('volume')} Écouter</button>`;
   area.hidden = false;
-  const bounds = target.getBoundingClientRect();
-  const height = area.offsetHeight;
-  area.style.left = Math.max(8,Math.min(innerWidth - area.offsetWidth - 8,bounds.left)) + 'px';
-  area.style.top = (bounds.bottom + height + 12 < innerHeight ? bounds.bottom + 4 : Math.max(8,bounds.top - height - 4)) + 'px';
+  positionWordActions();
+  if (focus) $('button',area).focus({preventScroll:true});
+}
+
+function scheduleWordPosition() {
+  if (wordPositionFrame || !hoveredPDFWord) return;
+  wordPositionFrame = requestAnimationFrame(()=>{
+    wordPositionFrame = null;
+    positionWordActions();
+  });
 }
 
 document.addEventListener('pointerover', event => {
   if (event.pointerType !== 'mouse' || !(event.target instanceof Element)) return;
-  if (event.target.closest('#pdf-word-actions')) {
-    clearTimeout(wordDismissTimer);
-    return;
-  }
   const target = event.target.closest('[data-pdf-word]');
-  if (!target || !$('#pdf-word-card')?.hidden || window.getSelection()?.toString()) return;
+  if (!target || wordInteractionOpen() || window.getSelection()?.toString()) return;
   clearTimeout(wordHoverTimer);
-  clearTimeout(wordDismissTimer);
-  hoveredPDFWord = target;
-  wordHoverTimer = setTimeout(() => showWordActions(target),240);
+  wordHoverTimer = setTimeout(()=>showWordActions(target),240);
 });
 document.addEventListener('pointerout', event => {
-  if (!(event.target instanceof Element) || !event.target.closest('[data-pdf-word],#pdf-word-actions')) return;
-  if (event.relatedTarget instanceof Element && event.relatedTarget.closest('#pdf-word-actions')) return;
-  clearTimeout(wordHoverTimer);
-  clearTimeout(wordDismissTimer);
-  wordDismissTimer = setTimeout(hideWordActions,360);
+  if (!wordInteractionOpen() && event.target instanceof Element && event.target.closest('[data-pdf-word]')) {
+    clearTimeout(wordHoverTimer);
+  }
 });
-document.addEventListener('scroll',hideWordActions,{capture:true,passive:true});
+document.addEventListener('scroll',scheduleWordPosition,{capture:true,passive:true});
+window.addEventListener('resize',scheduleWordPosition);
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  if (!$('#pdf-word-card')?.hidden) return;
-  toggleReaderFocus(false);
-  hideWordActions();
+  if (wordInteractionOpen()) hideWordCard();
+  else toggleReaderFocus(false);
 });
 document.addEventListener('click', event => {
   const action = event.target.closest('[data-pdf-word-action]');
   if (action && hoveredPDFWord) {
     const anchor = hoveredPDFWord;
-    hideWordActions();
     openPDFWord(anchor.dataset.pdfWord,anchor,action.dataset.pdfWordAction === 'listen');
+  } else if (!event.target.closest('[data-pdf-word],#pdf-word-actions,#pdf-word-card')) {
+    hideWordActions();
   }
   if (event.target.closest('[data-pdf-expand]')) toggleReaderFocus();
   if (event.target.closest('[data-paper-view]')) {

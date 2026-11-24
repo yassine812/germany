@@ -20,6 +20,7 @@ function loadReviewedGroups(review) {
   groupsByClip = new Map();
   reviewedGroups = [];
   const preparation = loadPreparation(review?.preparation || [], byId);
+  applyOpeningCuts(review?.openingCuts || {});
   for (const entry of preparation) addReviewedGroup(entry, entry.parts, preparationLevel);
   const levelOf = l => !preparation.length && preparationSessions.has(l.session) ? preparationLevel : l.level;
   for (const entry of entries) {
@@ -49,6 +50,23 @@ function loadReviewedGroups(review) {
     chapter.number = recording.chapters.length;
   }
   transferDiscardedHistory();
+}
+
+function applyOpeningCuts(openings) {
+  for (const clip of data.lessons) {
+    const originalStart = clip.mediaStart ?? 0;
+    const end = clip.mediaEnd ?? clip.duration;
+    const cut = openings[clip.mediaSource || clip.id];
+    let start = Number.isFinite(cut) && cut < end-2 ? Math.max(originalStart,cut) : originalStart;
+    const pauses = clip.silenceSkips || [];
+    for (const [from,to] of pauses) {
+      if (from <= start+.15 && to > start && to < end-2) start = to;
+    }
+    if (start <= originalStart+.05) continue;
+    const quiet = pauses.reduce((sum,[from,to])=>sum+Math.max(0,Math.min(start,to)-Math.max(originalStart,from)),0);
+    clip.mediaStart = start;
+    clip.effectiveDuration = Math.max(1,clip.effectiveDuration-(start-originalStart-quiet));
+  }
 }
 
 function addReviewedGroup(entry, parts, level) {
