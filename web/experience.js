@@ -4,14 +4,21 @@ function roadmapHTML(){return recordingJourneyHTML()}
 
 function integratedLessonHTML(l){return classroomLessonHTML(l)}
 
+const listeningRate = .75;
+const replayRate = .6;
+
+function listeningSpeedOptions() {
+  return '<option value=".75">Lent · 0,75×</option><option value=".6">Très lent · 0,60×</option><option value="1">Original · 1×</option>';
+}
+
 function exerciseAudioHTML(track){
-  return `<div class="exercise-listen"><label>${icon('headphones')} Écoute de cet exercice</label><small>${esc(track.title.replace('Lektion','Chapitre'))}</small><audio controls preload="none" src="${esc(track.src)}" aria-label="${esc(track.title)}"></audio><div class="exercise-audio-tools"><select aria-label="Vitesse de cette écoute" data-exercise-speed><option value=".85">Calme · 0,85×</option><option value=".7">Très lent · 0,7×</option><option value="1">Original · 1×</option></select><button data-exercise-replay aria-label="Réécouter cet exercice plus lentement">${icon('repeat')} Plus lent</button></div></div>`;
+  return `<div class="exercise-listen"><label>${icon('headphones')} Piste originale du manuel</label><small>${esc(track.title.replace('Lektion','Chapitre'))}</small><audio controls preload="none" src="${esc(track.src)}" aria-label="${esc(track.title)}"></audio><div class="exercise-audio-tools"><select aria-label="Vitesse de cette écoute" data-exercise-speed>${listeningSpeedOptions()}</select><button data-exercise-replay aria-label="Réécouter cet exercice plus lentement">${icon('repeat')} Plus lent</button></div></div>`;
 }
 
 function bindExerciseAudio(){
   document.querySelectorAll('.exercise-listen audio').forEach(audio=>{
-    if(audio.dataset.exerciseBound)return;audio.dataset.exerciseBound='true';audio.preservesPitch=true;audio.playbackRate=.85;
-    audio.addEventListener('ended',()=>{audio.playbackRate=.7;audio.closest('.exercise-listen').querySelector('select').value='.7';});
+    if(audio.dataset.exerciseBound)return;audio.dataset.exerciseBound='true';audio.preservesPitch=true;audio.playbackRate=listeningRate;
+    audio.addEventListener('ended',()=>{audio.playbackRate=replayRate;audio.closest('.exercise-listen').querySelector('select').value='.6';});
   });
 }
 
@@ -82,9 +89,9 @@ document.addEventListener('click', event => {
 document.addEventListener('click',e=>{
   const start=e.target.closest('[data-start]');if(start&&lesson(start.dataset.start)){state.unit=lesson(start.dataset.start).unit;save();}
   const marked=e.target.closest('[data-study-mark]');
-  if(marked){progress(route.id)[marked.dataset.studyMark]=true;save();marked.classList.add('checked');marked.innerHTML=icon('check')+(marked.dataset.studyMark==='watch'?'Cours écouté':'Exercices travaillés');}
+  if(marked){progress(route.id)[marked.dataset.studyMark]=true;save();updateCourseFinish();marked.classList.add('checked');marked.innerHTML=icon('check')+(marked.dataset.studyMark==='watch'?'Cours écouté':'Exercices travaillés');}
   const replay=e.target.closest('[data-exercise-replay]');
-  if(replay){const area=replay.closest('.exercise-listen'),audio=area.querySelector('audio');area.querySelector('select').value='.7';audio.playbackRate=.7;audio.currentTime=0;audio.play().catch(()=>toast('Appuie sur lecture pour écouter.'));}
+  if(replay){const area=replay.closest('.exercise-listen'),audio=area.querySelector('audio');area.querySelector('select').value='.6';audio.playbackRate=replayRate;audio.currentTime=0;audio.play().catch(()=>toast('Appuie sur lecture pour écouter.'));}
   const letter=e.target.closest('[data-answer-letter]');
   if(letter){const field=document.getElementById(letter.dataset.answerTarget);field.setRangeText(letter.dataset.answerLetter,field.selectionStart,field.selectionEnd,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));}
 });

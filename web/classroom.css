@@ -217,7 +217,7 @@
   .classroom-heading {min-height:66px;gap:7px}
   .classroom-heading .practice-entry {font-size:.8125rem;padding:6px 8px;white-space:normal}
   .classroom-heading .practice-entry .icon {width:17px;height:17px}
-  .classroom-heading:has(.primary) .practice-entry {display:none}
+  .classroom-heading:has(.primary:not([hidden])) .practice-entry {display:none}
   .split-classroom {grid-template-columns:minmax(0,1fr);grid-template-rows:auto;gap:9px}
   .study-divider {display:none}
   .split-classroom .classroom-coach {display:contents}
@@ -341,13 +341,6 @@ body:has(.reader.is-expanded) {overflow:hidden}
   background:#fff;color:var(--ink);padding:7px 10px;
 }
 .exercise-prompt {color:var(--world-deep);line-height:1.45;margin:0 0 10px}
-.page-exercise-fields {display:grid;gap:10px;margin-bottom:10px}
-.page-exercise-fields.choice-fields {grid-template-columns:repeat(auto-fit,minmax(min(135px,100%),1fr))}
-.page-exercise-item {min-width:0}
-.page-exercise-item .guided-answer-label {margin-bottom:3px}
-.page-exercise-item .exercise-listen {margin:0 0 7px}
-.page-part-result,.page-exercise-result {font-size:.875rem;color:var(--world-deep)}
-.page-part-result.review {color:#902f34}
-.page-part-result:not(:empty),.page-exercise-result:not(:empty) {margin-top:6px}
-.reading-only {color:var(--muted);line-height:1.5}
+.book-classroom:has(.book-answers[hidden]) {grid-template-columns:minmax(0,1fr)}
+.book-classroom .classroom-coach:has(.book-answers[hidden]) {display:none}
 #settings-content #lesson-notes {margin:10px 0 0;width:100%}

@@ -22,7 +22,7 @@ function classroomLessonHTML(l){
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
     <div><small>Niveau ${l.level} · Leçon ${l.number}</small><h1>${esc(l.title)}</h1></div>
     <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Pratiquer à l’oral</button>
-    ${p.watch && p.read && p.practice ? `<button class="primary" data-complete="${l.id}">${p.completed ? 'Mon parcours' : 'Terminer la leçon'}</button>` : ''}
+    <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l,p)?'':'hidden'}>${p.completed ? 'Mon parcours' : 'Terminer la leçon'}</button>
   </div>
   <div class="classroom-layout split-classroom" style="--study-split:${split}%">
     <section class="classroom-document" id="study-document" aria-label="Le PDF de ton cours">${paper}</section>
@@ -33,11 +33,11 @@ function classroomLessonHTML(l){
         ${mediaHTML(l)}
         <div class="classroom-video-actions">
           <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
-          <button class="link-button" data-jump-exercises>${icon('book')} Exercices de la page</button>
+          <button class="link-button" data-jump-exercises ${lessonExerciseIndex()<0?'hidden':''}>${icon('book')} ${pdfTasks(activePaper()).length?'Exercices de la page':'Voir les exercices'}</button>
           <button class="link-button" data-open-lesson-notes>${icon('book')} Mes notes</button>
         </div>
       </section>
-      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${exercisePanelHTML(l)}</section>
+      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction" ${pdfTasks(activePaper()).length?'':'hidden'}>${exercisePanelHTML(l)}</section>
     </aside>
   </div>`;
 }
@@ -45,7 +45,7 @@ function classroomLessonHTML(l){
 function classroomBookHTML(bid){
   const b=book(bid);if(!b)return '<p class="empty">Livre introuvable.</p>';
   const paper=readerHTML(null,bid,Number(route.tab)||1);
-  return `<div class="classroom-heading"><a class="icon-btn" href="#library" aria-label="Retour à la bibliothèque">${icon('back')}</a><div><small>${b.level} · Document de référence</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers">${exercisePanelHTML(null)}</section></aside></div>`;
+  return `<div class="classroom-heading"><a class="icon-btn" href="#library" aria-label="Retour à la bibliothèque">${icon('back')}</a><div><small>${b.level} · Document de référence</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises data-book-answers-toggle ${pdfTasks(activePaper()).length?'':'hidden'}>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers" ${pdfTasks(activePaper()).length?'':'hidden'}>${exercisePanelHTML(null)}</section></aside></div>`;
 }
 
 function fullPDFPageHTML(b,p){
@@ -92,7 +92,7 @@ function printedTaskHTML(b,p,l,t,index) {
   const correction = solutionFor(b,t);
   const key = answerBase(p,t);
   const pack = data.bookAudio?.[b.id]?.tracks || [];
-  const tracks = (t.tracks || []).map(id => pack.find(audio => audio.id===id)).filter(Boolean);
+  const tracks = (t.tracks || []).map(id => pack.find(audio => audio.id===id)).filter(track => track?.src.startsWith('assets/book-audio/'));
   const mode = taskResponse(t);
   const oral = !correction && mode==='oral';
   let fields = '';
@@ -123,22 +123,42 @@ function printedTaskHTML(b,p,l,t,index) {
     </div></details>`;
 }
 
+function pdfTasks(p) {
+  return data.exercisePages?.books?.[p?.book]?.[p?.page]?.tasks || [];
+}
+
+function lessonExerciseIndex() {
+  const pages = readerState?.pages || [];
+  const start = readerState?.index || 0;
+  const next = pages.findIndex((page,i) => i>=start && pdfTasks(page).length);
+  return next>=0 ? next : pages.findIndex(page => pdfTasks(page).length);
+}
+
+function lessonHasExercises(l) {
+  return getPages(l).some(page => pdfTasks(page).length);
+}
+
+function canFinishLesson(l,p=progress(l.id)) {
+  return p.watch && p.practice && (p.read || !lessonHasExercises(l));
+}
+
+function updateCourseFinish() {
+  const button = $('[data-course-completion]');
+  if (button && route.page==='lesson') button.hidden = !canFinishLesson(lesson(route.id));
+}
+
 function exercisePanelHTML(l) {
   const p = activePaper();
-  if (!p) return '';
+  const printed = pdfTasks(p);
+  if (!printed.length) return '';
   const b = book(p.book);
-  const printed = data.exercisePages?.books?.[b.id]?.[p.page]?.tasks || [];
-  const guided = printed.length ? [] : notesTasks(p,l);
-  const hasExercises = printed.length || guided.length;
   const pageFinish = route.page === 'assessment' ? assessmentFinishPageHTML() :
     l ? `<button class="study-check ${progress(l.id).read?'checked':''}" data-study-mark="read">${icon('check')}
-      ${progress(l.id).read ? 'Exercices terminés' : hasExercises ? 'Terminer les exercices' : 'Marquer la page lue'}</button>` :
+      ${progress(l.id).read ? 'Exercices terminés' : 'Terminer les exercices'}</button>` :
     '<button class="study-check" data-finish-page>' + icon('check') + ' Valider cette page</button>';
-  const body = printed.length ? printed.map((task,i) => printedTaskHTML(b,p,l,task,i)).join('') :
-    guided.length ? notesExerciseHTML(p,l,guided) : '<p class="reading-only">Cette page est à lire. Elle ne contient pas d’exercice interactif.</p>';
   return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button>
     <h2>Exercices de la page</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div>
-    <div class="page-task-list">${body}</div>${pageFinish}`;
+    <div class="page-task-list">${printed.map((task,i) => printedTaskHTML(b,p,l,task,i)).join('')}</div>${pageFinish}`;
 }
 
 function normalizedAnswer(text){return String(text||'').normalize('NFC').toLocaleLowerCase('de-DE').replace(/[’‘`]/g,"'").replace(/[.,;:!?–—_()\[\]«»"']/g,' ').replace(/\s+/g,' ').trim();}
@@ -187,7 +207,7 @@ function checkCurrentTask(id){
     return {...result,part,index:i};
   });
   feedback.innerHTML=checked.map(c=>`<div class="part-result ${c.status}"><strong>${esc(c.part.label)} · ${esc(c.message)}</strong>${c.expected?`<p>Réponse attendue : <span lang="de">${esc(c.expected)}</span></p>`:''}${c.status==='open'?grammarHTML(state.answers[key+':part'+c.index]||''):''}</div>`).join('');
-  const closed=checked.filter(c=>c.status!=='open');if(closed.length&&closed.every(c=>c.status==='correct')&&route.page==='lesson'){progress(route.id).read=true;save();}
+  const closed=checked.filter(c=>c.status!=='open');if(closed.length&&closed.every(c=>c.status==='correct')&&route.page==='lesson'){progress(route.id).read=true;save();updateCourseFinish();}
 }
 
 async function loadPDFWords(){
@@ -277,7 +297,34 @@ function bindClassroom(){
   loadPDFWords();bindPaperAspect();bindExerciseAudio();bindStudyDivider();
   if(!document.getElementById('pdf-word-card')){const box=document.createElement('aside');box.id='pdf-word-card';box.className='word-card';box.hidden=true;box.setAttribute('aria-label','Traduction du mot');document.body.append(box);}
 }
-function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');const l=lesson(route.id);if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():exercisePanelHTML(l);if(route.page==='assessment')saveAssessmentPage(readerState.index);bindPaperAspect();loadPDFWords();bindBookAudio();bindExerciseAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
+function afterPDFPageChange() {
+  const panel = $('#classroom-answers');
+  const l = route.page==='lesson' ? lesson(route.id) : null;
+  if (route.page==='assessment') {
+    if (panel) panel.innerHTML = assessmentPaperHTML();
+    saveAssessmentPage(readerState.index);
+  } else {
+    const hasExercises = pdfTasks(activePaper()).length > 0;
+    if (panel) {
+      panel.hidden = !hasExercises;
+      panel.innerHTML = exercisePanelHTML(l);
+    }
+    const jumper = $('[data-jump-exercises]');
+    if (jumper) {
+      jumper.hidden = lessonExerciseIndex() < 0;
+      jumper.innerHTML = icon('book') + (hasExercises?' Exercices de la page':' Voir les exercices');
+    }
+    const bookToggle = $('[data-book-answers-toggle]');
+    if (bookToggle) bookToggle.hidden = !hasExercises;
+    if (!hasExercises) document.body.classList.remove('answers-open');
+  }
+  bindPaperAspect();
+  loadPDFWords();
+  bindBookAudio();
+  hideWordCard();
+  const resume = $('[data-rejoin-course]');
+  if (resume && pdfHeldCue!==null) resume.hidden = false;
+}
 function holdCurrentPDFCue() {
   const media = document.getElementById('recording');
   if (!media || route.page !== 'lesson') return;
@@ -336,8 +383,15 @@ document.addEventListener('click',e=>{
   const grammar=e.target.closest('[data-grammar-key]');if(grammar){const key=grammar.dataset.grammarKey;document.querySelector(`[data-grammar-result="${key}"]`).innerHTML=grammarHTML(state.answers[key]||'');}
   const key=e.target.closest('[data-guided-letter]');if(key){const body=key.closest('.guided-task-body'),field=lastGuidedField&&body.contains(lastGuidedField)?lastGuidedField:body.querySelector('[data-guided-answer]');if(field){const a=field.selectionStart,b=field.selectionEnd;field.setRangeText(key.dataset.guidedLetter,a,b,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));}}
   if(e.target.closest('[data-toggle-exercises]'))document.body.classList.toggle('answers-open');
-  if(e.target.closest('[data-jump-exercises]')){
-    const answers=document.getElementById('classroom-answers');
+  if (e.target.closest('[data-jump-exercises]')) {
+    const index = lessonExerciseIndex();
+    if (index < 0) return;
+    if (readerState.index !== index) {
+      holdCurrentPDFCue();
+      readerState.index = index;
+      updateReader();
+    }
+    const answers = $('#classroom-answers');
     answers.focus({preventScroll:true});
     answers.scrollIntoView({block:'start'});
   }
