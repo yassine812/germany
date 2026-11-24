@@ -241,14 +241,15 @@ function replaceLessonRoute(target) {
   route = parseRoute();
 }
 
-function nextCoursePassage(l) {
+function nextCoursePassage(l, unfinishedOnly = false) {
   const parts = reviewedGroup(l).parts;
-  return parts[parts.findIndex(clip=>clip.id===l.id)+1];
+  const following = parts.slice(parts.findIndex(clip=>clip.id===l.id)+1);
+  return unfinishedOnly ? following.find(clip=>!state.lessons[clip.id]?.watch && !isDone(clip.id)) : following[0];
 }
 
 function advanceCoursePassage(l, rate) {
   if (route.page!=='lesson' || route.id!==l.id || route.tab==='practice') return;
-  const next = nextCoursePassage(l);
+  const next = nextCoursePassage(l,true);
   if (!next) return;
   continuingPlayback = {id:next.id,rate};
   readerState = null;

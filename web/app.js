@@ -170,10 +170,17 @@ function bindMedia() {
   v.addEventListener('loadedmetadata',()=>{
     const position = linkedPageCue(l)?.time ?? progress(l.id).position;
     if (start > 0 || position > 0) v.currentTime = position>=start && position<end-2 ? position : start;
-    if (route.bookId) holdCurrentPDFCue();
-    syncCoursePage(v);
-    updatePosition();
-    resumeCoursePassage(l,v);
+    const ready = () => {
+      if (route.id!==l.id || !v.isConnected) return;
+      if (route.bookId) holdCurrentPDFCue();
+      syncCoursePage(v);
+      updatePosition();
+      const play = $('[data-clip-play]',card);
+      if (play) play.disabled = false;
+      resumeCoursePassage(l,v);
+    };
+    if (v.seeking) v.addEventListener('seeked',ready,{once:true});
+    else ready();
   });
   v.addEventListener('play',()=>{
     finished = false;
@@ -211,7 +218,7 @@ function bindMedia() {
 
 function boundedControls(duration,tag) {
   return `<div class="clip-controls">
-    <button type="button" data-clip-play aria-label="Lire l’extrait">${icon('play')}</button>
+    <button type="button" data-clip-play disabled aria-label="Lire l’extrait">${icon('play')}</button>
     <input type="range" data-clip-position min="0" max="${duration}" step=".1" value="0" aria-label="Position dans l’extrait">
     <button type="button" data-clip-mute aria-label="Couper le son" aria-pressed="false">${icon('volume')}</button>
     ${tag==='video' ? '<button type="button" data-clip-screen aria-label="Plein écran">⛶</button>' : ''}
