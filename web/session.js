@@ -25,12 +25,16 @@ function signInHTML(unavailable = false) {
         <button class="primary full" type="button" data-retry-session>Réessayer</button>` :
         `<form id="sign-in-form" method="post" action="/api/session" data-mode="${sessionMode}">
           ${register?'<label>Prénom ou nom<input name="name" autocomplete="name" required maxlength="64"></label>':''}
-          <label>Identifiant<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required
-            ${register?'minlength="3" maxlength="32" aria-describedby="signup-username-hint"':'maxlength="64"'}>
-            ${register?'<small id="signup-username-hint">3 à 32 caractères, avec lettres, chiffres, point, tiret ou trait de soulignement.</small>':''}</label>
-          <label>Mot de passe<input type="password" name="password" autocomplete="${register?'new-password':'current-password'}" required maxlength="256"
-            ${register?'minlength="12" aria-describedby="signup-password-hint"':''}>
-            ${register?'<small id="signup-password-hint">12 caractères minimum.</small>':''}</label>
+          <div class="session-field">
+            <label>Identifiant<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required
+              ${register?'minlength="3" maxlength="32" aria-describedby="signup-username-hint"':'maxlength="64"'}></label>
+            ${register?'<small id="signup-username-hint">3 à 32 caractères, avec lettres, chiffres, point, tiret ou trait de soulignement.</small>':''}
+          </div>
+          <div class="session-field">
+            <label>Mot de passe<input type="password" name="password" autocomplete="${register?'new-password':'current-password'}" required maxlength="256"
+              ${register?'minlength="12" aria-describedby="signup-password-hint"':''}></label>
+            ${register?'<small id="signup-password-hint">12 caractères minimum.</small>':''}
+          </div>
           ${register?'<label>Confirmer le mot de passe<input type="password" name="confirmation" autocomplete="new-password" required maxlength="256"></label>':''}
           <p data-sign-in-error role="alert" hidden></p>
           <button class="primary full" type="submit">${register?'S’inscrire':'Se connecter'}</button>
@@ -64,10 +68,12 @@ document.addEventListener('submit',async event => {
   event.preventDefault();
   const form = event.target;
   const button = form.querySelector('[type="submit"]');
+  const modeButton = $('[data-session-mode]');
   const error = form.querySelector('[data-sign-in-error]');
   const fields = Object.fromEntries(new FormData(form));
   const action = form.dataset.mode==='register' ? 'register' : 'login';
   button.disabled = true;
+  modeButton.disabled = true;
   error.hidden = true;
   try {
     const response = await fetch('/api/session',{
@@ -89,6 +95,7 @@ document.addEventListener('submit',async event => {
     error.hidden = false;
   } finally {
     button.disabled = false;
+    modeButton.disabled = false;
   }
 });
 
@@ -98,6 +105,7 @@ document.addEventListener('click',async event => {
   if (mode && !courseAccount) {
     sessionMode = mode.dataset.sessionMode;
     signInHTML();
+    $('#sign-in-form input').focus();
     return;
   }
   const button = event.target.closest('[data-sign-out]');

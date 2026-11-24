@@ -11,8 +11,9 @@
 .sign-in-card h1 {font:900 clamp(1.75rem,5vw,2.4rem)/1.15 Nunito,sans-serif;margin:18px 0 23px}
 .sign-in-card p {margin:0 0 18px}
 #sign-in-form {display:grid;gap:16px}
+#sign-in-form .session-field {display:grid;gap:6px}
 #sign-in-form label {display:grid;gap:6px;font-size:.9rem;font-weight:750}
-#sign-in-form label small {font-weight:500;color:#694f7b;line-height:1.35}
+#sign-in-form .session-field small {color:#694f7b;line-height:1.35}
 #sign-in-form input {
   width:100%;min-height:46px;padding:9px 12px;border:1px solid #d5c4e5;border-radius:10px;
   background:white;color:var(--ink);font:inherit;font-size:1rem;
