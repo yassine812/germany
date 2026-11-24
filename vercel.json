@@ -9,7 +9,12 @@
     { "source": "/api/word", "destination": "/api/course?key=word" },
     { "source": "/api/version", "destination": "/build.json" },
     { "source": "/media/:file", "destination": "/api/course?key=media/:file" },
-    { "source": "/assets/:group(books|book-audio|audio|words|text|dictionary)/:file+", "destination": "/api/course?key=assets/:group/:file+" }
+    { "source": "/assets/books/:book/:page", "destination": "/api/course?key=assets/books/:book/:page" },
+    { "source": "/assets/text/:book/:page", "destination": "/api/course?key=assets/text/:book/:page" },
+    { "source": "/assets/book-audio/:file", "destination": "/api/course?key=assets/book-audio/:file" },
+    { "source": "/assets/audio/:file", "destination": "/api/course?key=assets/audio/:file" },
+    { "source": "/assets/words/:file", "destination": "/api/course?key=assets/words/:file" },
+    { "source": "/assets/dictionary/:file", "destination": "/api/course?key=assets/dictionary/:file" }
   ],
   "headers": [
     { "source": "/(.*)", "headers": [

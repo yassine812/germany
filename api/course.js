@@ -28,10 +28,10 @@ export default async function course(req, res) {
   }
   const path = coursePath(query.key, query.q);
   if (!path) return res.status(404).end();
-  // Vercel Authentication protects this environment. The public production
-  // alias on Vercel Hobby must never be able to access the source.
+  // This project uses Vercel Authentication with All Deployments protection.
+  // Never make the source credential available in a development environment.
   const token = process.env.DEUTSCHWEG_MEDIA_TOKEN;
-  if (process.env.VERCEL_ENV !== 'preview' || !token) {
+  if (!['preview', 'production'].includes(process.env.VERCEL_ENV) || !token) {
     return res.status(503).json({error: 'Ouvre le déploiement privé Deutschweg sur Vercel.'});
   }
   const headers = new Headers({'OAI-Sites-Authorization': 'Bearer ' + token, 'Accept-Encoding':'identity'});

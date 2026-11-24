@@ -12,12 +12,16 @@ test('course routes cover the application and exclude private administration', (
   }
 });
 
-test('course access fails closed on the public production alias', async () => {
+test('course access fails closed without a secret and in development', async () => {
   const before = {environment:process.env.VERCEL_ENV, token:process.env.DEUTSCHWEG_MEDIA_TOKEN};
   process.env.VERCEL_ENV = 'production';
-  process.env.DEUTSCHWEG_MEDIA_TOKEN = 'mock-token';
+  delete process.env.DEUTSCHWEG_MEDIA_TOKEN;
   const res = {setHeader(){}, status(code){this.code=code;return this;}, json(body){this.body=body;}};
   try {
+    await handler({method:'GET',query:{key:'course.json'}},res);
+    assert.equal(res.code,503);
+    process.env.VERCEL_ENV = 'development';
+    process.env.DEUTSCHWEG_MEDIA_TOKEN = 'mock-token';
     await handler({method:'GET',query:{key:'course.json'}},res);
     assert.equal(res.code,503);
     assert(!JSON.stringify(res.body).includes('mock-token'));
