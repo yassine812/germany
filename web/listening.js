@@ -34,24 +34,23 @@ function listeningWordKey(word) {
 }
 
 function matchListeningWords(words, pdfWords) {
-  const tokens = pdfWords.map(node => listeningWordKey(node.dataset.pdfWord));
+  const printed = pdfWords.map(node => ({node,token:listeningWordKey(node.dataset.pdfWord)}))
+    .filter(word => word.token);
   const matches = new Map();
-  for (let index=0; index+2<tokens.length; index++) {
-    const phrase = tokens.slice(index,index+3);
-    if (phrase.some(token => !token)) continue;
-    const first = pdfWords[index], last = pdfWords[index+2];
+  for (let index=0; index+2<printed.length; index++) {
+    const phrase = printed.slice(index,index+3);
+    const first = phrase[0].node, last = phrase[2].node;
     const sameLine = Math.abs(parseFloat(first.style.top)-parseFloat(last.style.top)) < parseFloat(first.style.height);
     if (!sameLine || parseFloat(first.style.left)>=parseFloat(last.style.left)) continue;
-    const key = phrase.join(' ');
+    const key = phrase.map(word=>word.token).join(' ');
     matches.set(key,matches.has(key) ? null : index);
   }
   const spoken = words.map(word => listeningWordKey(word[2]));
   const result = new Map();
   for (let index=0; index+2<spoken.length; index++) {
-    if (words[index+2][0]-words[index][1] > 1800) continue;
     const match = matches.get(spoken.slice(index,index+3).join(' '));
     if (match == null) continue;
-    for (let offset=0; offset<3; offset++) result.set(index+offset,pdfWords[match+offset]);
+    for (let offset=0; offset<3; offset++) result.set(index+offset,printed[match+offset].node);
   }
   return result;
 }

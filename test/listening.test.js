@@ -29,3 +29,11 @@ test('highlights unambiguous PDF phrases and skips isolated answer options', () 
   const repeated = [...page,...page.slice(0,3).map((node,index)=>pdf(node.dataset.pdfWord,index,'40%'))];
   assert.equal(matchListeningWords(words,repeated).size,0);
 });
+
+test('matches a printed vocabulary list read with pauses between words', () => {
+  const pdf = ['Grüße','–','Schlüssel','–','Stühle'].map((text,index) => ({
+    dataset:{pdfWord:text},style:{left:`${index*12}%`,top:'20%',height:'2%'}
+  }));
+  const words = [[3000,3700,'Grüße.'],[9000,9750,'Schlüssel.'],[15000,15600,'Stühle.']];
+  assert.equal(matchListeningWords(words,pdf).get(1),pdf[2]);
+});
