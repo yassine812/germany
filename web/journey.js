@@ -21,7 +21,8 @@ function recordingJourneyHTML() {
   const zones = levels.map(level => ({level, stops:journeyStops(level, recordings)}));
   const stops = zones.flatMap(zone => zone.stops);
   const remembered = state.journeyNext?.[state.level];
-  const resumeId = groupsByClip.get(remembered)?.session || remembered;
+  const savedGroup = groupsByClip.get(remembered);
+  const resumeId = savedGroup ? journeyStopId(savedGroup) : remembered;
   const current = stops.find(stop => stop.id === foxJourney?.to)
     || stops.find(stop => stop.id === resumeId && !stop.complete)
     || stops.find(stop => stop.recording?.level === state.level && stop.started && !stop.complete)
@@ -46,20 +47,18 @@ function recordingJourneyHTML() {
 }
 
 function journeyStops(level, recordings) {
-  const lessons = recordings.filter(recording => recording.level === level);
-  const stops = lessons.map(recording => {
-    const done = recording.chapters.filter(groupDone).length;
-    const complete = done === recording.chapters.length;
-    const {position:started} = groupProgress(recording);
-    return {id:recording.id, recording, title:recording.title, complete, started,
-      subtitle:`${done} / ${recording.chapters.length} chapitres`,
-      symbol:recording.kind === 'audio' ? 'headphones' : 'play', clip:groupStart(recording).id};
+  const preparation = level === preparationLevel;
+  const lessons = preparation ? reviewedGroups.filter(l=>l.level===level) : recordings.filter(l=>l.level===level);
+  const stops = lessons.map(lesson => {
+    const {completed:complete,position:started} = groupProgress(lesson);
+    const pages = lesson.preparationPages || [];
+    const pageText = pages.length > 1 ? `p. ${pages.join(', ')}` : `p. ${pages[0]}`;
+    const subtitle = preparation
+      ? [pages.length ? pageText : '', `${lessonMinutes(lesson)} min`].filter(Boolean).join(' · ')
+      : `${lesson.chapters.filter(groupDone).length} / ${lesson.chapters.length} chapitres`;
+    return {id:lesson.id, recording:lesson, title:lesson.title, complete, started, subtitle,
+      symbol:lesson.kind === 'audio' ? 'headphones' : 'play', clip:groupStart(lesson).id};
   });
-  const notes = level === preparationLevel ? book('notes') : null;
-  if (notes) {
-    stops.unshift({id:'preparation-pdf', title:'PDF de préparation', subtitle:`${notes.pages.length} pages`,
-      symbol:'book', href:`#book/${notes.id}/1/reference`});
-  }
   const assessment = assessments[level];
   if (assessment) {
     const answered = Object.values(assessmentProgress(level).pages).filter(Boolean).length;
@@ -152,8 +151,15 @@ function nextJourneyLesson(current) {
   const group = reviewedGroup(current);
   const unfinished = reviewedGroups.filter(chapter => !groupDone(chapter));
   const later = reviewedGroups.slice(reviewedGroups.indexOf(group) + 1);
-  return later.find(chapter => chapter.session === group.session && !groupDone(chapter))
-    || unfinished.find(chapter => chapter.session === group.session)
+  if (group.level === preparationLevel) {
+    return later.find(chapter=>chapter.level===preparationLevel && !groupDone(chapter))
+      || unfinished.find(chapter=>chapter.level===preparationLevel)
+      || unfinished.find(chapter=>chapter.level!==preparationLevel)
+      || null;
+  }
+  const sameSession = chapter => chapter.level===group.level && chapter.session===group.session;
+  return later.find(chapter => sameSession(chapter) && !groupDone(chapter))
+    || unfinished.find(sameSession)
     || later.find(chapter => chapter.level === group.level && !groupDone(chapter))
     || unfinished.find(chapter => chapter.level === group.level)
     || later.find(chapter => !groupDone(chapter))

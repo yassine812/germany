@@ -5,6 +5,7 @@ let reviewedGroups = [];
 let recordingsBySession = new Map();
 let groupsByClip = new Map();
 let discardedSessions = {};
+let replacedClips = new Map();
 let continuingPlayback = null;
 
 function loadReviewedGroups(review) {
@@ -18,32 +19,30 @@ function loadReviewedGroups(review) {
   }
   groupsByClip = new Map();
   reviewedGroups = [];
+  const preparation = loadPreparation(review?.preparation || [], byId);
+  for (const entry of preparation) addReviewedGroup(entry, entry.parts, preparationLevel);
+  const levelOf = l => !preparation.length && preparationSessions.has(l.session) ? preparationLevel : l.level;
   for (const entry of entries) {
-    const clips = entry.clips.map(id=>byId.get(id)).filter(Boolean);
-    const first = clips[0];
-    if (!first || clips.length !== entry.clips.length || clips.some(l=>groupsByClip.has(l.id) || l.session!==first.session)) continue;
-    const group = {...first,title:entry.title,sourceLabel:entry.sourceLabel,parts:clips,
-      effectiveDuration:clips.reduce((sum,l)=>sum+l.effectiveDuration,0)};
-    reviewedGroups.push(group);
-    clips.forEach(l=>groupsByClip.set(l.id,group));
+    const clips = entry.clips.filter(id=>!groupsByClip.has(id) && !replacedClips.has(id)).map(id=>byId.get(id)).filter(Boolean);
+    if (clips.length) addReviewedGroup(entry, clips, levelOf(clips[0]));
   }
   for (const l of data.lessons) {
-    if (groupsByClip.has(l.id) || discardedSessions[l.session]) continue;
-    const group = {...l,parts:[l]};
-    reviewedGroups.push(group);
-    groupsByClip.set(l.id,group);
+    if (groupsByClip.has(l.id) || discardedSessions[l.session] || replacedClips.has(l.id)) continue;
+    addReviewedGroup(l, [l], levelOf(l));
   }
   const order = new Map(data.lessons.map((l,i)=>[l.id,i]));
-  reviewedGroups.sort((a,b)=>order.get(a.id)-order.get(b.id));
+  reviewedGroups.sort((a,b)=>
+    Number(b.level===preparationLevel) - Number(a.level===preparationLevel) ||
+    (a.level===preparationLevel ? 0 : order.get(a.id)-order.get(b.id)));
   recordingsBySession = new Map();
   const sources = new Map(data.sessions?.map(s=>[s.id,s]));
   for (const chapter of reviewedGroups) {
-    if (preparationSessions.has(chapter.session)) chapter.level = preparationLevel;
-    let recording = recordingsBySession.get(chapter.session);
+    const key = recordingKey(chapter);
+    let recording = recordingsBySession.get(key);
     if (!recording) {
       recording = {id:chapter.session,level:chapter.level,kind:chapter.kind,
         title:sources.get(chapter.session)?.title || chapter.title,chapters:[],parts:[]};
-      recordingsBySession.set(chapter.session,recording);
+      recordingsBySession.set(key,recording);
     }
     recording.chapters.push(chapter);
     recording.parts.push(...chapter.parts);
@@ -52,13 +51,99 @@ function loadReviewedGroups(review) {
   transferDiscardedHistory();
 }
 
+function addReviewedGroup(entry, parts, level) {
+  const first = parts[0];
+  const group = {...first,title:entry.title,sourceLabel:entry.sourceLabel,parts,
+    level,
+    effectiveDuration:parts.reduce((sum,l)=>sum+l.effectiveDuration,0)};
+  reviewedGroups.push(group);
+  parts.forEach(l=>groupsByClip.set(l.id,group));
+}
+
+function loadPreparation(entries, byId) {
+  const excerptsBySource = new Map();
+  replacedClips = new Map();
+  const groups = [];
+  for (const entry of entries) {
+    const parts = entry.parts.map(part => {
+      const original = byId.get(part.source);
+      if (!original) return null;
+      const pages = part.pages || entry.pages;
+      const start = part.start ?? 0;
+      const end = part.end ?? original.duration;
+      if (end <= start || start < 0 || end > original.duration || !pages.length) return null;
+      const cues = [...original.pageCues,...(part.cues || []).map(cue=>({...cue,book:'notes'}))]
+        .filter(cue=>cue.book==='notes' && pages.includes(cue.page) && cue.time>=start && cue.time<end)
+        .sort((a,b)=>a.time-b.time);
+      const page = part.page || cues[0]?.page || pages[0];
+      const initialCue = cues[0]?.time === start ? [] : [{book:'notes',page,time:start}];
+      const refs = [page,...entry.pages.filter(number=>number!==page)].map(number=>({book:'notes',start:number,end:number,purpose:'Dans la leçon'}));
+      const changes = {preparationPages:entry.pages,refs,pageCues:[...initialCue,...cues]};
+      if (!part.id) {
+        Object.assign(original,changes);
+        return original;
+      }
+      const quiet = (original.silenceSkips || []).reduce((sum,[a,b])=>sum+Math.max(0,Math.min(end,b)-Math.max(start,a)),0);
+      const clip = {...original,...changes,id:part.id,mediaSource:original.id,mediaStart:start,mediaEnd:end,
+        effectiveDuration:Math.max(1,end-start-quiet)};
+      const excerpts = excerptsBySource.get(original.id) || [];
+      excerpts.push(clip);
+      excerptsBySource.set(original.id,excerpts);
+      data.lessons.push(clip);
+      return clip;
+    }).filter(Boolean);
+    if (parts.length) groups.push({...entry,parts});
+  }
+  for (const [id,excerpts] of excerptsBySource) {
+    const original = byId.get(id);
+    const ranges = excerpts.map(l=>[l.mediaStart,l.mediaEnd]).sort((a,b)=>a[0]-b[0]);
+    const removed = ranges.reduce((sum,[a,b])=>sum+b-a,0);
+    if (removed >= original.duration-.05) {
+      replacedClips.set(id,excerpts);
+    } else {
+      original.silenceSkips = [...(original.silenceSkips || []),...ranges].sort((a,b)=>a[0]-b[0]).reduce((merged,[a,b])=>{
+        const tail = merged.at(-1);
+        if (tail && a<=tail[1]) tail[1] = Math.max(b,tail[1]);
+        else merged.push([a,b]);
+        return merged;
+      },[]);
+      const first = original.silenceSkips[0];
+      const last = original.silenceSkips.at(-1);
+      if (first[0]===0) original.mediaStart = first[1];
+      if (last[1]>=original.duration-.05) original.mediaEnd = last[0];
+      original.pageCues = original.pageCues.filter(cue=>!ranges.some(([a,b])=>cue.time>=a && cue.time<b));
+      original.effectiveDuration = Math.max(1, Math.min(original.effectiveDuration, original.duration-removed));
+    }
+  }
+  transferPreparationHistory();
+
+  return groups;
+}
+
+function transferPreparationHistory() {
+  for (const clip of data.lessons) {
+    const previous = state.lessons[clip.mediaSource];
+    if (!previous || state.lessons[clip.id]) continue;
+    state.lessons[clip.id] = {...previous,
+      position:previous.position>=clip.mediaStart && previous.position<clip.mediaEnd ? previous.position : clip.mediaStart};
+  }
+}
+
+function recordingKey(group) {
+  return group.level===preparationLevel ? 'prep-'+group.session : group.session;
+}
+
+function journeyStopId(group) {
+  return group.level===preparationLevel ? group.id : group.session;
+}
+
 function reviewedGroup(l) {
   if (!l) return null;
   return groupsByClip.get(l.id) || {...l,parts:[l]};
 }
 
 function recordingFor(l) {
-  return recordingsBySession.get(l.session);
+  return recordingsBySession.get(recordingKey(reviewedGroup(l)));
 }
 
 function groupDone(group) {
@@ -110,6 +195,14 @@ function transferDiscardedHistory() {
 function resolveReviewedLesson() {
   if (route.page!=='lesson') return;
   const old = lesson(route.id);
+  const excerpts = replacedClips.get(route.id);
+  if (excerpts) {
+    const position = state.lessons[route.id]?.position || 0;
+    const target = excerpts.find(l=>position>=l.mediaStart && position<l.mediaEnd) || excerpts[0];
+    if (state.notes[route.id] && !state.notes[target.id]) state.notes[target.id] = state.notes[route.id];
+    replaceLessonRoute(target);
+    return;
+  }
   const duplicateSession = old?.session || route.id;
   const session = discardedSessions[duplicateSession];
   if (!session) return;
@@ -121,6 +214,10 @@ function resolveReviewedLesson() {
   if (!target) return;
   if (!state.lessons[target.id]?.position) progress(target.id).position = playbackMoment(target,time);
   if (state.notes[route.id] && !state.notes[target.id]) state.notes[target.id] = state.notes[route.id];
+  replaceLessonRoute(target);
+}
+
+function replaceLessonRoute(target) {
   const paper = route.bookId && route.pdfPage ? '/' + route.bookId + '/' + route.pdfPage : '';
   history.replaceState(null,'','#lesson/'+target.id+'/'+route.tab+paper);
   route = parseRoute();
@@ -152,7 +249,7 @@ function resumeCoursePassage(l, media) {
 
 function chapterListHTML(l) {
   const recording = recordingFor(l);
-  if (!recording || recording.chapters.length < 2) return '';
+  if (reviewedGroup(l).level===preparationLevel || !recording || recording.chapters.length < 2) return '';
   const current = reviewedGroup(l);
   return `<label class="course-chapters">
     <span>Chapitres de la séance</span>

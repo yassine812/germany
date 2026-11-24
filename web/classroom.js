@@ -6,6 +6,8 @@ function classroomLessonHTML(l){
   if(!l)return '<p class="empty">Cette leçon n’existe pas.</p>';
   const group = reviewedGroup(l);
   const level = levelLabel(group.level);
+  const prep = group.level===preparationLevel;
+  const number = prep ? reviewedGroups.filter(chapter=>chapter.level===preparationLevel).indexOf(group)+1 : group.number;
   if(route.tab==='practice'){
     if(!quiz||quiz.lesson!==l.id)startQuiz(l.id,false);
     return `<div class="practice-heading"><button class="back" data-tab="watch">${icon('back')} Cours et PDF</button><span>${level}</span></div>
@@ -22,9 +24,9 @@ function classroomLessonHTML(l){
   const split = percentSplit(state.studySplit);
   return `<div class="classroom-heading">
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
-    <div><small>${level} · ${esc(recordingFor(l)?.title)} · Chapitre ${group.number}</small><h1>${esc(group.title)}</h1></div>
+    <div><small>${level} · ${prep ? 'Leçon' : esc(recordingFor(l)?.title)+' · Chapitre'} ${number}</small><h1>${esc(group.title)}</h1></div>
     <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Pratiquer à l’oral</button>
-    <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : 'Terminer ce chapitre'}</button>
+    <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : (prep ? 'Terminer la leçon' : 'Terminer ce chapitre')}</button>
   </div>
   <div class="classroom-layout split-classroom" style="--study-split:${split}%">
     <section class="classroom-document" id="study-document" aria-label="Le PDF de ton cours">${paper}</section>

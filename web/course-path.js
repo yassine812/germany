@@ -6,13 +6,13 @@ function findPageLesson(bookId, page) {
   if (!pageLessons) {
     pageLessons = new Map();
     for (const l of data.lessons) {
-      if (!l.mediaUrl || discardedSessions[l.session]) continue;
+      if (!l.mediaUrl || !groupsByClip.has(l.id)) continue;
       for (const ref of l.refs) {
         for (let number = ref.start; number <= ref.end; number++) {
           const key = ref.book + ':' + number;
           const onScreen = l.pageCues?.some(cue => cue.book === ref.book && cue.page === number);
           if (ref.book==='notes' && !onScreen) continue;
-          const score = onScreen ? 3 : ref.purpose === 'À l’écran' ? 2 : 1;
+          const score = l.preparationPages && onScreen ? 4 : onScreen ? 3 : ref.purpose === 'À l’écran' ? 2 : 1;
           if ((pageLessons.get(key)?.score || 0) < score) pageLessons.set(key, {l,score});
         }
       }
@@ -41,7 +41,7 @@ function resolveLinkedCourse() {
     route = parseRoute();
     return;
   }
-  if (route.page !== 'book' || route.bookId === 'reference') return;
+  if (route.page !== 'book' || route.bookId === 'document' || (route.bookId === 'reference' && route.id !== 'notes')) return;
   const source = book(route.id);
   if (!source) return;
   const page = Number(route.tab) || 1;

@@ -2,6 +2,7 @@
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths={path:'M4 19c0-7 16-1 16-9a4 4 0 0 0-8 0M4 19h.01M16 6h.01',book:'M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2ZM12 6v15',repeat:'M20 7H7a4 4 0 0 0-4 4m17-4-4-4m4 4-4 4M4 17h13a4 4 0 0 0 4-4M4 17l4 4m-4-4 4-4',chart:'M4 20V11h4v9M10 20V4h4v16m2 0v-7h4v7',play:'m9 5 11 7-11 7Z',flame:'M12 2c1 5 7 6 7 13a7 7 0 0 1-14 0c0-3 1-5 3-7 0 4 1 5 2 5 1-5 0-7 2-11Z',star:'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z',bolt:'m13 2-9 12h7l-1 8 10-13h-7Z',headphones:'M4 14v-3a8 8 0 0 1 16 0v3M4 12H3v7h4v-7ZM20 12h1v7h-4v-7Z',clock:'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',check:'m5 12 4 4L19 6',settings:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2',volume:'M11 4 5 9H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',search:'M16 16l5 5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',leaf:'M20 3c-14-2-20 12-11 16 9 4 13-6 11-16ZM5 22 16 9',trophy:'M7 3h10v6a5 5 0 0 1-10 0ZM7 5H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4m-5 2v6m-5 1h10',file:'M5 3h9l5 5v13H5ZM14 3v6h5M8 13h8m-8 4h6',heart:'M12 21 4 13C-3 5 6-1 12 6c6-7 15-1 8 7Z',chevron:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7'};
+paths.pause='M9 5v14M15 5v14';
 paths.mic='M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0ZM5 11a7 7 0 0 0 14 0M12 18v4m-3 0h6';
 const icon=(n,cls='')=>`<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[n]||paths.star}"/></svg>`;
 const KEY='deutschweg-progress-v1';
@@ -34,13 +35,14 @@ function week(){const day=today();const jsday=new Date(day+'T12:00:00Z').getUTCD
 function pathPage(){return roadmapHTML()}
 function mediaHTML(l) {
   const p = progress(l.id);
-  const position = p.position >= l.duration - 2 ? 0 : p.position;
+  const [start,end] = playbackBounds(l);
+  const position = p.position >= end - 2 ? 0 : Math.max(0,p.position-start);
   return `<div class="media-card" id="media-card"><div class="media-placeholder">${icon('play')}<p>Chargement du cours…</p></div></div>
     <div class="media-controls">
       <button data-action="rewind" aria-label="Reculer de dix secondes">− 10 s</button>
       <button data-action="forward" aria-label="Avancer de dix secondes">+ 10 s</button>
       <label><select id="recording-speed" aria-label="Vitesse de la leçon"><option value=".6">0,60×</option><option value=".75" ${l.kind==='audio'?'selected':''}>0,75×</option><option value="1" ${l.kind==='audio'?'':'selected'}>1×</option><option value="1.25">1,25×</option></select></label>
-      <span class="position-label" id="position-label">${clockLabel(position)} / ${clockLabel(l.duration)}</span>
+      <span class="position-label" id="position-label">${clockLabel(position)} / ${clockLabel(end-start)}</span>
     </div>`;
 }
 function ruleHTML(l){return `<div class="rule-card"><h3>${icon('leaf')}Le petit déclic</h3>${l.focusRule?`<p>${esc(l.focusRule)}</p>`:(l.topics||[l.topic]).map(t=>`<p><strong>${esc(data.topics[t].title)}</strong><br>${esc(data.topics[t].rule)}</p>`).join('<br>')}</div>`}
@@ -58,11 +60,11 @@ function prepareReader(l,bid=null,page=1){
 }
 function readerHTML(l=null,bid=null,page=1,customReader=null){const r=customReader||prepareReader(l,bid,page);if(!r.pages.length)return '<div class="empty">Aucune page associée. Ouvre ta bibliothèque pour choisir un livre.</div>';const p=r.pages[r.index],b=book(p.book);return `<div class="reader" id="reader">${pageSyncHTML(l)}<div class="reader-toolbar"><select id="reader-page" aria-label="Choisir une page">${r.pages.map((q,i)=>`<option value="${i}" ${i===r.index?'selected':''}>${q.purpose?esc(q.purpose)+' · ':''}${esc(q.title.replace('Menschen ',''))} · ${q.printed?'p. '+q.printed:'PDF '+q.page}</option>`).join('')}</select>${readerZoomHTML()}<div class="reader-nav"><button class="icon-btn" data-reader="-1" aria-label="Page précédente" ${r.index===0?'disabled':''}>${icon('back')}</button><span>${r.index+1} / ${r.pages.length}</span><button class="icon-btn" data-reader="1" aria-label="Page suivante" ${r.index===r.pages.length-1?'disabled':''}>${icon('chevron')}</button><button class="icon-btn" data-pdf-expand title="Agrandir dans le cours" aria-label="Agrandir dans le cours">⛶</button></div></div>${fullPDFPageHTML(b,p)}<div class="reader-caption">${esc(b.title)} · ${p.printed?'page '+p.printed:'PDF '+p.page} · <button class="link-button" data-source-pdf="${esc(b.id)}">Origine du PDF</button></div></div>`}
 function updateReader(){if(!readerState)return;const expanded=$('#reader')?.classList.contains('is-expanded');const html=route.page==='lesson'?readerHTML(lesson(route.id)):route.page==='assessment'?assessmentReaderHTML():readerHTML(null,route.id,Number(route.tab)||1);$('#reader').outerHTML=html;if(expanded)toggleReaderFocus(true);afterPDFPageChange()}
-function libraryPage(){const total=data.books.reduce((n,b)=>n+b.pages.length,0);return `<div class="page-heading"><h1>Ma bibliothèque</h1><span class="pill">${data.books.length} supports · ${total} pages</span></div><p class="muted section-intro">Ouvre un support pour retrouver la leçon liée à la page.</p><div class="search-box">${icon('search')}<input id="book-search" placeholder="Rechercher un mot dans les textes disponibles…" aria-label="Rechercher dans les livres"></div><div id="search-results" class="search-results"></div><p class="helper-text">Les manuels scannés se consultent page par page. La recherche comprend aussi le texte reconnu dans les manuels scannés.</p><div class="filters">${['Tous',...levels].map(x=>`<button class="chip ${x==='Tous'?'active':''}" data-filter="${x}">${x===preparationLevel?"Préparation":x}</button>`).join('')}</div><div class="library-grid">${data.books.map(b=>`<article class="book-card" data-level="${b.level}"><div class="book-visual" style="background:${b.level==='A1.2'?'#eff4e7':b.level==='A2.1'?'#edf2f6':'#f3f2e8'}"><img src="${b.pages[0].image}" loading="lazy" alt="Couverture ${esc(b.title)}"></div><div class="eyebrow">${levelLabel(b.level)} · ${{notes:'MES NOTES',coursebook:'LIVRE DE COURS',workbook:'CAHIER D’EXERCICES',test:'ÉVALUATION'}[b.kind]}</div><h3>${esc(b.title)}</h3><p>${b.pages.length} pages · réponses sauvegardées</p><a class="secondary" href="${libraryBookURL(b)}">${b.kind==='test'?'Faire le bilan':'Étudier avec ce support'}</a><a class="book-reference-link" href="#book/${b.id}/1/reference">Feuilleter le PDF</a></article>`).join('')}</div>`}
+function libraryPage(){const total=data.books.reduce((n,b)=>n+b.pages.length,0);return `<div class="page-heading"><h1>Ma bibliothèque</h1><span class="pill">${data.books.length} supports · ${total} pages</span></div><p class="muted section-intro">Ouvre un support pour retrouver la leçon liée à la page.</p><div class="search-box">${icon('search')}<input id="book-search" placeholder="Rechercher un mot dans les textes disponibles…" aria-label="Rechercher dans les livres"></div><div id="search-results" class="search-results"></div><p class="helper-text">Les manuels scannés se consultent page par page. La recherche comprend aussi le texte reconnu dans les manuels scannés.</p><div class="filters">${['Tous',...levels].map(x=>`<button class="chip ${x==='Tous'?'active':''}" data-filter="${x}">${x===preparationLevel?"Préparation":x}</button>`).join('')}</div><div class="library-grid">${data.books.map(b=>`<article class="book-card" data-level="${b.level}"><div class="book-visual" style="background:${b.level==='A1.2'?'#eff4e7':b.level==='A2.1'?'#edf2f6':'#f3f2e8'}"><img src="${b.pages[0].image}" loading="lazy" alt="Couverture ${esc(b.title)}"></div><div class="eyebrow">${levelLabel(b.level)} · ${{notes:'MES NOTES',coursebook:'LIVRE DE COURS',workbook:'CAHIER D’EXERCICES',test:'ÉVALUATION'}[b.kind]}</div><h3>${esc(b.title)}</h3><p>${b.pages.length} pages · réponses sauvegardées</p><a class="secondary" href="${libraryBookURL(b)}">${b.kind==='test'?'Faire le bilan':'Étudier avec ce support'}</a><a class="book-reference-link" href="#book/${b.id}/1/${b.id==="notes"?"document":"reference"}">Feuilleter le PDF</a></article>`).join('')}</div>`}
 function bookPage(bid){return classroomBookHTML(bid)}
 function shuffleOptions(options){const a=[...options];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function reviewPage(){const topics=[...new Set(data.lessons.filter(l=>groupsByClip.get(l.id)?.level===state.level).flatMap(l=>l.topics||[l.topic]))];return `<div class="page-heading"><h1>Un peu, mais souvent.</h1>${levelSelect()}</div><p class="muted section-intro">Une écoute, quelques mots, un petit quiz.<br>Reviens sur ce que tu connais et laisse les mots s’installer.</p><div class="review-grid">${topics.map(t=>{const l=data.lessons.find(x=>(x.topics||[x.topic]).includes(t)&&groupsByClip.get(x.id)?.level===state.level);return `<article class="review-topic"><span class="pill">${state.reviews[t]?'Déjà pratiqué':'À découvrir'}</span><h3 style="margin-top:14px">${esc(data.topics[t].title)}</h3><p>${data.topics[t].vocab.map(v=>esc(v.de)).join(' · ')}</p><button class="secondary" data-quiz="${l.id}" data-quiz-topic="${t}">${icon('repeat')}M’entraîner</button><button class="link-button" style="margin-left:14px" data-listen="${t}">Écouter</button></article>`}).join('')}</div>`}
-function progressPage(){const recordings=[...recordingsBySession.values()],done=recordings.filter(groupDone).length,totalMinutes=Math.floor(Object.values(state.days).reduce((n,d)=>n+(d.seconds||0),0)/60),s=streak(state.days);return `<div class="page-heading"><h1>Regarde le chemin parcouru.</h1><span class="pill">À ton rythme</span></div><p class="muted section-intro">Chaque minute et chaque retour comptent.<br>Tes progrès sont enregistrés dans ce navigateur.</p><div class="progress-summary"><div class="big-stat"><strong>${done}<span style="font-size:1rem;color:#b4c2b5"> / ${recordings.length}</span></strong><p>séances terminées</p></div><div class="big-stat"><strong>${totalMinutes}</strong><p>minutes d’apprentissage</p></div><div class="big-stat"><strong>${state.xp}</strong><p>points d’expérience</p></div></div>${levels.map(level=>{const ls=recordings.filter(l=>l.level===level),n=ls.filter(groupDone).length;return `<div class="level-progress"><div class="row"><h3>${levelLabel(level)}</h3><p>${n} / ${ls.length} séances</p></div><div class="progress-track"><div class="progress-fill" style="width:${ls.length ? n/ls.length*100 : 0}%"></div></div></div>`}).join('')}<h2 style="margin-top:32px">Les petites victoires</h2><div class="badges">${[[done>=1,'leaf','Le premier pas','Terminer ta première leçon'],[s>=3,'flame','On garde le rythme','Apprendre 3 jours de suite'],[reviewedGroups.filter(l=>l.level==='A1.1').every(groupDone),'trophy','A1.1, geschafft !','Terminer toutes les leçons A1.1']].map(([ok,i,title,text])=>`<div class="badge-card ${ok?'earned':''}">${icon(i)}<h3>${title}</h3><p>${text}${ok?' · obtenu ✓':''}</p></div>`).join('')}</div><div class="action-row"><button class="secondary" data-action="export">Exporter mes progrès</button><button class="ghost" data-action="import">Importer une sauvegarde</button><button class="ghost" data-action="settings">Objectif & réglages</button></div>`}
+function progressPage(){const recordings=[...recordingsBySession.values()].filter(recording=>recording.level!==preparationLevel).concat(reviewedGroups.filter(group=>group.level===preparationLevel)),done=recordings.filter(groupDone).length,totalMinutes=Math.floor(Object.values(state.days).reduce((n,d)=>n+(d.seconds||0),0)/60),s=streak(state.days);return `<div class="page-heading"><h1>Regarde le chemin parcouru.</h1><span class="pill">À ton rythme</span></div><p class="muted section-intro">Chaque minute et chaque retour comptent.<br>Tes progrès sont enregistrés dans ce navigateur.</p><div class="progress-summary"><div class="big-stat"><strong>${done}<span style="font-size:1rem;color:#b4c2b5"> / ${recordings.length}</span></strong><p>étapes terminées</p></div><div class="big-stat"><strong>${totalMinutes}</strong><p>minutes d’apprentissage</p></div><div class="big-stat"><strong>${state.xp}</strong><p>points d’expérience</p></div></div>${levels.map(level=>{const ls=recordings.filter(l=>l.level===level),n=ls.filter(groupDone).length;return `<div class="level-progress"><div class="row"><h3>${levelLabel(level)}</h3><p>${n} / ${ls.length} ${level===preparationLevel?"leçons":"séances"}</p></div><div class="progress-track"><div class="progress-fill" style="width:${ls.length ? n/ls.length*100 : 0}%"></div></div></div>`}).join('')}<h2 style="margin-top:32px">Les petites victoires</h2><div class="badges">${[[done>=1,'leaf','Le premier pas','Terminer ta première leçon'],[s>=3,'flame','On garde le rythme','Apprendre 3 jours de suite'],[reviewedGroups.filter(l=>l.level==='A1.1').every(groupDone),'trophy','A1.1, geschafft !','Terminer toutes les leçons A1.1']].map(([ok,i,title,text])=>`<div class="badge-card ${ok?'earned':''}">${icon(i)}<h3>${title}</h3><p>${text}${ok?' · obtenu ✓':''}</p></div>`).join('')}</div><div class="action-row"><button class="secondary" data-action="export">Exporter mes progrès</button><button class="ghost" data-action="import">Importer une sauvegarde</button><button class="ghost" data-action="settings">Objectif & réglages</button></div>`}
 function completeLesson(id) {
   const current = lesson(id);
   const group = reviewedGroup(current);
@@ -75,7 +77,7 @@ function completeLesson(id) {
     state.xp += 30;
     const day = state.days[today()] ||= {seconds:0};
     day.lessons = (day.lessons || 0) + 1;
-    toast('Chapitre terminé ! + 30 XP');
+    toast(group.level===preparationLevel?'Leçon terminée ! + 30 XP':'Chapitre terminé ! + 30 XP');
     const {level} = group;
     const next = nextJourneyLesson(current);
     const assessment = assessments[level];
@@ -87,7 +89,7 @@ function completeLesson(id) {
       navigate('#assessment/' + level);
       return;
     }
-    if (next?.session === current.session) {
+    if (level !== preparationLevel && next?.level === level && next.session === current.session) {
       save();
       readerState = null;
       quiz = null;
@@ -95,8 +97,8 @@ function completeLesson(id) {
       return;
     }
     if (next) {
-      foxJourney = {from: current.session, to: next.session};
-      state.journeyNext = {...state.journeyNext, [next.level]:next.session};
+      foxJourney = {from: journeyStopId(group), to: journeyStopId(next)};
+      state.journeyNext = {...state.journeyNext, [next.level]:journeyStopId(next)};
       state.level = next.level;
       state.unit = next.unit;
     }
@@ -111,7 +113,139 @@ function stopOtherMedia(active){
   if(wordPlayer&&wordPlayer!==active)wordPlayer.pause();
 }
 document.addEventListener('play',e=>{if(e.target.matches?.('audio,video'))stopOtherMedia(e.target)},true);
-async function bindMedia(){const l=route.page==='lesson'?lesson(route.id):null;if(!l||!$('#media-card'))return;const card=$('#media-card');if(!l.mediaUrl){card.innerHTML=`<div class="media-placeholder">${icon('play')}<h3>Leçon en cours de montage</h3><p>Cette leçon sera disponible directement dans le lecteur.</p></div>`;return}const audio=l.kind==='audio';card.innerHTML=`<${audio?'audio':'video'} id="recording" controls preload="metadata" src="${esc(l.mediaUrl)}" ${l.poster?'poster="'+esc(l.poster)+'"':''} aria-label="Leçon ${esc(reviewedGroup(l).title)}" ${audio?'':'playsinline'}></${audio?'audio':'video'}><div class="media-meta"><span>${Math.ceil(l.effectiveDuration/60)} min d’explications</span><span>Reprise automatique</span></div>`;const v=$('#recording');v.preservesPitch=true;v.playbackRate=Number($('#recording-speed').value);v.addEventListener('loadedmetadata',()=>{const pos=linkedPageCue(l)?.time ?? (progress(l.id).position||0);if(pos>0&&pos<v.duration-2)v.currentTime=pos;if(route.bookId)holdCurrentPDFCue();syncCoursePage(v);resumeCoursePassage(l,v)});v.addEventListener('play',()=>jumpQuietInterval(v,l));v.addEventListener('seeked',()=>syncCoursePage(v));v.addEventListener('timeupdate',()=>{if(jumpQuietInterval(v,l))return;syncCoursePage(v);if(Date.now()-lastSave<2500)return;lastSave=Date.now();progress(l.id).position=v.currentTime;save();if($('#position-label'))$('#position-label').textContent=clockLabel(v.currentTime)+' / '+clockLabel(l.duration)});v.addEventListener('pause',()=>{progress(l.id).position=v.currentTime;save();if($('#position-label'))$('#position-label').textContent=clockLabel(v.currentTime)+' / '+clockLabel(l.duration)});v.addEventListener('ended',()=>{progress(l.id).watch=true;save();updateCourseFinish();const b=$('[data-study-mark="watch"]');if(b){b.classList.add('checked');b.innerHTML=icon('check')+'Cours écouté'}advanceCoursePassage(l,v.playbackRate)});v.addEventListener('error',()=>{card.innerHTML=`<div class="media-placeholder">${icon('play')}<h3>${audio?'L’audio':'La vidéo'} ne se charge pas.</h3><p>Réessaie dans un instant.</p><button class="secondary" data-action="retry-media">Réessayer</button></div>`})}
+function playbackBounds(l) {
+  return [l.mediaStart ?? 0, l.mediaEnd ?? l.duration];
+}
+
+function bindMedia() {
+  const l = route.page==='lesson' ? lesson(route.id) : null;
+  const card = $('#media-card');
+  if (!l || !card) return;
+  if (!l.mediaUrl) {
+    card.innerHTML = `<div class="media-placeholder">${icon('play')}<h3>Leçon en cours de montage</h3><p>Cette leçon sera disponible directement dans le lecteur.</p></div>`;
+    return;
+  }
+  const tag = l.kind==='audio' ? 'audio' : 'video';
+  const [start,end] = playbackBounds(l);
+  const bounded = l.mediaStart!==undefined || l.mediaEnd!==undefined;
+  const range = bounded ? `#t=${start},${end}` : '';
+  const poster = l.poster && !range ? `poster="${esc(l.poster)}"` : '';
+  card.innerHTML = `<${tag} id="recording" ${bounded?'':'controls'} preload="metadata" src="${esc(l.mediaUrl+range)}" ${poster}
+    aria-label="Leçon ${esc(reviewedGroup(l).title)}" ${tag==='video'?'playsinline':''}></${tag}>
+    ${bounded ? boundedControls(end-start,tag) : ''}
+    <div class="media-meta"><span>${lessonMinutes(l)} min d’explications</span><span>Reprise automatique</span></div>`;
+  const v = $('#recording');
+  v.preservesPitch = true;
+  v.playbackRate = Number($('#recording-speed').value);
+  if (bounded) bindBoundedControls(card,v,start);
+  let finished = false;
+  const updatePosition = () => {
+    const position = Math.max(0,Math.min(end-start,v.currentTime-start));
+    const label = $('#position-label');
+    if (label) label.textContent = clockLabel(position)+' / '+clockLabel(end-start);
+    const slider = $('[data-clip-position]',card);
+    if (slider) {
+      slider.value = position;
+      slider.setAttribute('aria-valuetext',clockLabel(position)+' sur '+clockLabel(end-start));
+    }
+  };
+  const remember = () => {
+    progress(l.id).position = v.currentTime;
+    save();
+    updatePosition();
+  };
+  const finish = () => {
+    if (finished || route.id!==l.id) return;
+    finished = true;
+    progress(l.id).watch = true;
+    save();
+    updateCourseFinish();
+    const button = $('[data-study-mark="watch"]');
+    if (button) {
+      button.classList.add('checked');
+      button.innerHTML = icon('check')+'Cours écouté';
+    }
+    advanceCoursePassage(l,v.playbackRate);
+  };
+  v.addEventListener('loadedmetadata',()=>{
+    const position = linkedPageCue(l)?.time ?? progress(l.id).position;
+    if (start > 0 || position > 0) v.currentTime = position>=start && position<end-2 ? position : start;
+    if (route.bookId) holdCurrentPDFCue();
+    syncCoursePage(v);
+    updatePosition();
+    resumeCoursePassage(l,v);
+  });
+  v.addEventListener('play',()=>{
+    finished = false;
+    if (v.currentTime < start || (l.mediaEnd && v.currentTime>=end-.05)) v.currentTime = start;
+    jumpQuietInterval(v,l);
+  });
+  v.addEventListener('seeked',()=>{
+    if (bounded && (v.currentTime < start || v.currentTime > end+.05)) {
+      v.currentTime = Math.min(end,Math.max(start,v.currentTime));
+      return;
+    }
+    syncCoursePage(v);
+    updatePosition();
+  });
+  v.addEventListener('timeupdate',()=>{
+    updatePosition();
+    if (l.mediaEnd && !v.seeking && v.currentTime>=end-.05) {
+      v.pause();
+      finish();
+      return;
+    }
+    if (jumpQuietInterval(v,l)) return;
+    syncCoursePage(v);
+    if (Date.now()-lastSave<2500) return;
+    lastSave = Date.now();
+    remember();
+  });
+  v.addEventListener('pause',remember);
+  v.addEventListener('ended',finish);
+  v.addEventListener('error',()=>{
+    card.innerHTML = `<div class="media-placeholder">${icon('play')}<h3>${tag==='audio'?'L’audio':'La vidéo'} ne se charge pas.</h3>
+      <p>Réessaie dans un instant.</p><button class="secondary" data-action="retry-media">Réessayer</button></div>`;
+  });
+}
+
+function boundedControls(duration,tag) {
+  return `<div class="clip-controls">
+    <button type="button" data-clip-play aria-label="Lire l’extrait">${icon('play')}</button>
+    <input type="range" data-clip-position min="0" max="${duration}" step=".1" value="0" aria-label="Position dans l’extrait">
+    <button type="button" data-clip-mute aria-label="Couper le son" aria-pressed="false">${icon('volume')}</button>
+    ${tag==='video' ? '<button type="button" data-clip-screen aria-label="Plein écran">⛶</button>' : ''}
+  </div>`;
+}
+
+function bindBoundedControls(card,media,start) {
+  const play = $('[data-clip-play]',card);
+  const mute = $('[data-clip-mute]',card);
+  const showPlay = () => {
+    play.innerHTML = icon(media.paused?'play':'pause');
+    play.setAttribute('aria-label',media.paused?'Lire l’extrait':'Mettre l’extrait en pause');
+  };
+  play.addEventListener('click',()=>{
+    if (media.paused) media.play().catch(()=>toast('La vidéo n’a pas démarré. Réessaie.'));
+    else media.pause();
+  });
+  media.addEventListener('play',showPlay);
+  media.addEventListener('pause',showPlay);
+  $('[data-clip-position]',card).addEventListener('input',event=>{
+    media.currentTime = start+Number(event.target.value);
+  });
+  mute.addEventListener('click',()=>{
+    media.muted = !media.muted;
+    mute.setAttribute('aria-pressed',String(media.muted));
+    mute.setAttribute('aria-label',media.muted?'Rétablir le son':'Couper le son');
+  });
+  $('[data-clip-screen]',card)?.addEventListener('click',()=>{
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (card.requestFullscreen) card.requestFullscreen().catch(()=>{});
+    else media.webkitEnterFullscreen?.();
+  });
+}
+
 function bindAudios(){bindBookAudio();for(const area of $$('[data-audio-topic]')){const audio=$('audio',area);if(!audio)continue;audio.preservesPitch=true;audio.dataset.plays='0';audio.addEventListener('ended',()=>{audio.dataset.plays=String(Number(audio.dataset.plays||0)+1);if(Number(audio.dataset.plays)===1){const sel=$('.audio-speed',area);sel.value='slow';state.audioSpeed='slow';save();audio.src=audios[area.dataset.audioTopic][$('.voice-select',area).value].slow;toast('La prochaine écoute sera plus lente.')}})}}
 function changeAudio(area,forceSlow=false,play=false){const a=$('audio',area),t=area.dataset.audioTopic,voice=$('.voice-select',area).value;const select=$('.audio-speed',area);if(forceSlow)select.value='slow';state.voice=voice;state.audioSpeed=select.value;save();a.pause();a.src=audios[t][voice][select.value];a.load();if(play)a.play().catch(()=>toast('Appuie sur lecture pour démarrer.'))}
 function speak(text){if(wordAudio[text]?.[state.voice]){if(wordPlayer)wordPlayer.pause();wordPlayer=new Audio(wordAudio[text][state.voice]);stopOtherMedia(wordPlayer);wordPlayer.preservesPitch=true;wordPlayer.playbackRate=wordLast===text?.85:1;wordLast=text;wordPlayer.play().catch(()=>toast('Appuie de nouveau pour écouter le mot.'));return}if(!('speechSynthesis'in window)){toast('Écoute le dialogue de la leçon pour la prononciation.');return}const voices=speechSynthesis.getVoices().filter(v=>/^de[-_]/i.test(v.lang));if(!voices.length){toast('La voix allemande de ton navigateur est indisponible. Utilise les audios de la leçon.');return}stopOtherMedia(null);const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=.75;u.voice=voices.find(v=>state.voice==='male'?/conrad|stefan|male/i.test(v.name):/katja|hedda|female/i.test(v.name))||voices[0];speechSynthesis.cancel();speechSynthesis.speak(u)}
@@ -126,10 +260,11 @@ function resolveLegacyLesson(){
   if(!state.lessons[target.id]&&pos>0){const p=progress(target.id);p.position=(target.sourceSegments||[[target.sourceStart,target.sourceEnd]]).reduce((sum,[a,b])=>sum+Math.max(0,Math.min(b,pos)-a),0);}
   state.level=target.level;state.unit=target.unit;route.id=target.id;
   history.replaceState(null,'','#lesson/'+target.id+'/'+route.tab);
+  resolveReviewedLesson();
 }
 function render(){if(!data)return;disposeSpeech();persistMedia();route=parseRoute();resolveReviewedLesson();resolveLegacyLesson();resolveLinkedCourse();if(['path','books-path','review','assessment'].includes(route.page)&&(route.page!=='assessment'||assessments[route.id])&&levels.includes(route.id)&&state.level!==route.id){state.level=route.id;state.unit=0;}if(route.page==='lesson'&&lesson(route.id)){state.level=reviewedGroup(lesson(route.id)).level;state.unit=lesson(route.id).unit;}if(route.page==='book'&&book(route.id))state.level=book(route.id).level;document.body.dataset.world=state.level;document.body.classList.toggle('in-practice',route.page==='lesson'&&route.tab==='practice');const content=route.page==='lesson'?lessonPage(lesson(route.id)):route.page==='library'?libraryPage():route.page==='book'?bookPage(route.id):route.page==='assessment'?assessmentHTML(route.id):route.page==='review'?reviewPage():route.page==='progress'?progressPage():pathPage();$('#app').innerHTML=shell(content);bindMedia();bindAudios();bindClassroom();bindPronunciation();animateJourney();document.title=(route.page==='lesson'?(reviewedGroup(lesson(route.id))?.title||'Cours'):route.page==='book'?(book(route.id)?.title||'Ma bibliothèque'):route.page==='library'?'Ma bibliothèque':route.page==='assessment'?'Bilan '+route.id:route.page==='review'?'Réviser':route.page==='progress'?'Mes progrès':'Mon parcours')+' · Deutschweg';save()}
-document.addEventListener('click',e=>{const b=e.target.closest('button,[data-book]');if(!b)return;lastActive=Date.now();if(b.dataset.chapter){state.unit=Math.max(0,Math.min(data.units[state.level].length-1,state.unit+Number(b.dataset.chapter)));save();render();window.scrollTo({top:0,behavior:'instant'})}else if(b.dataset.nav){quiz=null;readerState=null;navigate('#'+b.dataset.nav)}else if(b.dataset.start){quiz=null;readerState=null;navigate('#lesson/'+b.dataset.start+'/watch')}else if(b.dataset.read){readerState=null;navigate('#lesson/'+b.dataset.read+'/read')}else if(b.dataset.book){readerState=null;navigate('#book/'+b.dataset.book+'/1')}else if(b.dataset.tab){navigate('#lesson/'+route.id+'/'+b.dataset.tab+(route.bookId&&route.pdfPage?'/'+route.bookId+'/'+route.pdfPage:''))}else if(b.dataset.mark){const key=b.dataset.mark;progress(route.id)[key]=true;save();navigate('#lesson/'+route.id+'/'+(key==='watch'?'read':'practice'))}else if(b.dataset.complete){completeLesson(b.dataset.complete)}else if(b.dataset.quiz){startQuiz(b.dataset.quiz,true,b.dataset.quizTopic)}else if(b.dataset.listen){$('#settings-content').innerHTML=audioHTML(b.dataset.listen);$('#settings').showModal();bindAudios()}else if(b.dataset.topic){startQuiz(route.id,false,b.dataset.topic);renderQuiz()}else if(b.dataset.option!==undefined){if(quiz.checked)return;quiz.selected=quiz.questions[quiz.index].options[Number(b.dataset.option)];$$('.option').forEach((o,i)=>o.classList.toggle('selected',i===Number(b.dataset.option)))}else if(b.dataset.letter){const inp=$('#type-answer');if(!inp||inp.disabled)return;const pos=inp.selectionStart;inp.setRangeText(b.dataset.letter,pos,inp.selectionEnd,'end');inp.focus()}else if(b.dataset.reader){readerState.index+=Number(b.dataset.reader);updateReader()}else if(b.dataset.speak){speak(b.dataset.speak)}else if(b.dataset.filter){$$('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));$$('.book-card').forEach(x=>x.hidden=b.dataset.filter!=='Tous'&&x.dataset.level!==b.dataset.filter)}else if(b.dataset.action){const a=b.dataset.action,v=$('#recording');if(a==='settings')settings();if(a==='retry-media')bindMedia();if(a==='rewind'&&v)v.currentTime=Math.max(0,v.currentTime-10);if(a==='forward'&&v)v.currentTime=Math.min(v.duration,v.currentTime+10);if(a==='check-answer')checkAnswer();if(a==='next-question')nextQuestion();if(a==='retry-quiz'){startQuiz(quiz.lesson,false,quiz.topic);renderQuiz()}if(a==='replay-audio')changeAudio(b.closest('[data-audio-topic]'),true,true);if(a==='export')downloadProgress();if(a==='import')$('#import-input').click()}});
-document.addEventListener('change',async e=>{const t=e.target;if(t.id==='level-select'){navigate('#'+route.page+'/'+t.value)}if(t.id==='unit-select'){state.unit=Number(t.value);save();render()}if(t.id==='recording-speed'&&$('#recording'))$('#recording').playbackRate=Number(t.value);if(t.id==='reader-page'){readerState.index=Number(t.value);updateReader()}if(t.classList.contains('voice-select')||t.classList.contains('audio-speed'))changeAudio(t.closest('[data-audio-topic]'));if(t.id==='goal-select'){state.goal=Number(t.value);save();updateDailyPanel();toast('Ton nouvel objectif est enregistré.')}if(t.id==='import-input'&&t.files[0]){try{const incoming=validateImport(JSON.parse(await t.files[0].text()));state=incoming;transferDiscardedHistory();save();toast('Tes progrès et tes réponses ont été restaurés.');if($('#settings').open)$('#settings').close();render()}catch{toast('Ce fichier n’est pas une sauvegarde Deutschweg valide.')}t.value=''}});
+document.addEventListener('click',e=>{const b=e.target.closest('button,[data-book]');if(!b)return;lastActive=Date.now();if(b.dataset.chapter){state.unit=Math.max(0,Math.min(data.units[state.level].length-1,state.unit+Number(b.dataset.chapter)));save();render();window.scrollTo({top:0,behavior:'instant'})}else if(b.dataset.nav){quiz=null;readerState=null;navigate('#'+b.dataset.nav)}else if(b.dataset.start){quiz=null;readerState=null;navigate('#lesson/'+b.dataset.start+'/watch')}else if(b.dataset.read){readerState=null;navigate('#lesson/'+b.dataset.read+'/read')}else if(b.dataset.book){readerState=null;navigate('#book/'+b.dataset.book+'/1')}else if(b.dataset.tab){navigate('#lesson/'+route.id+'/'+b.dataset.tab+(route.bookId&&route.pdfPage?'/'+route.bookId+'/'+route.pdfPage:''))}else if(b.dataset.mark){const key=b.dataset.mark;progress(route.id)[key]=true;save();navigate('#lesson/'+route.id+'/'+(key==='watch'?'read':'practice'))}else if(b.dataset.complete){completeLesson(b.dataset.complete)}else if(b.dataset.quiz){startQuiz(b.dataset.quiz,true,b.dataset.quizTopic)}else if(b.dataset.listen){$('#settings-content').innerHTML=audioHTML(b.dataset.listen);$('#settings').showModal();bindAudios()}else if(b.dataset.topic){startQuiz(route.id,false,b.dataset.topic);renderQuiz()}else if(b.dataset.option!==undefined){if(quiz.checked)return;quiz.selected=quiz.questions[quiz.index].options[Number(b.dataset.option)];$$('.option').forEach((o,i)=>o.classList.toggle('selected',i===Number(b.dataset.option)))}else if(b.dataset.letter){const inp=$('#type-answer');if(!inp||inp.disabled)return;const pos=inp.selectionStart;inp.setRangeText(b.dataset.letter,pos,inp.selectionEnd,'end');inp.focus()}else if(b.dataset.reader){readerState.index+=Number(b.dataset.reader);updateReader()}else if(b.dataset.speak){speak(b.dataset.speak)}else if(b.dataset.filter){$$('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));$$('.book-card').forEach(x=>x.hidden=b.dataset.filter!=='Tous'&&x.dataset.level!==b.dataset.filter)}else if(b.dataset.action){const a=b.dataset.action,v=$('#recording');if(a==='settings')settings();if(a==='retry-media')bindMedia();if(v&&['rewind','forward'].includes(a)){const [start,end]=playbackBounds(lesson(route.id));v.currentTime=Math.min(end,Math.max(start,v.currentTime+(a==='rewind'?-10:10)));}if(a==='check-answer')checkAnswer();if(a==='next-question')nextQuestion();if(a==='retry-quiz'){startQuiz(quiz.lesson,false,quiz.topic);renderQuiz()}if(a==='replay-audio')changeAudio(b.closest('[data-audio-topic]'),true,true);if(a==='export')downloadProgress();if(a==='import')$('#import-input').click()}});
+document.addEventListener('change',async e=>{const t=e.target;if(t.id==='level-select'){navigate('#'+route.page+'/'+t.value)}if(t.id==='unit-select'){state.unit=Number(t.value);save();render()}if(t.id==='recording-speed'&&$('#recording'))$('#recording').playbackRate=Number(t.value);if(t.id==='reader-page'){readerState.index=Number(t.value);updateReader()}if(t.classList.contains('voice-select')||t.classList.contains('audio-speed'))changeAudio(t.closest('[data-audio-topic]'));if(t.id==='goal-select'){state.goal=Number(t.value);save();updateDailyPanel();toast('Ton nouvel objectif est enregistré.')}if(t.id==='import-input'&&t.files[0]){try{const incoming=validateImport(JSON.parse(await t.files[0].text()));state=incoming;transferDiscardedHistory();transferPreparationHistory();save();toast('Tes progrès et tes réponses ont été restaurés.');if($('#settings').open)$('#settings').close();render()}catch{toast('Ce fichier n’est pas une sauvegarde Deutschweg valide.')}t.value=''}});
 document.addEventListener('input',e=>{lastActive=Date.now();const t=e.target;if(t.id==='page-answers'){state.answers[t.dataset.answerKey]=t.value;save();$('#answer-status').textContent=storageError?'Export recommandé':'Enregistré ✓'}if(t.id==='lesson-notes'){state.notes[route.id]=t.value;save()}if(t.id==='book-search'){const q=normalize(t.value);const out=$('#search-results');if(q.length<2){out.innerHTML='';return}const matches=[];for(const b of data.books){for(const p of b.pages){const norm=normalize(p.text);if(norm.includes(q)){matches.push({b,p});if(matches.length>=20)break}}if(matches.length>=20)break}out.innerHTML=matches.length?matches.map(({b,p})=>`<button class="result" data-search-book="${b.id}" data-search-page="${p.page}"><strong>${esc(b.title)} · PDF ${p.page}</strong><p>${esc(p.text.replace(/\s+/g,' ').slice(0,200))}…</p></button>`).join(''):'<p class="muted">Aucun texte trouvé. Tu peux aussi consulter les pages scannées directement.</p>'}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-search-book]');if(b){readerState=null;navigate('#book/'+b.dataset.searchBook+'/'+b.dataset.searchPage)}});
 document.addEventListener('keydown',e=>{lastActive=Date.now();if(e.key==='Enter'&&e.target.id==='type-answer'){e.preventDefault();if(quiz.checked)nextQuestion();else checkAnswer()}});
