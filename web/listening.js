@@ -96,24 +96,36 @@ function lessonReadingWord(words, time, layer) {
   return word && listeningWordKey(word.dataset.pdfWord) === cue[4] ? word : null;
 }
 
+function followReadingPage(l, words, index) {
+  const cue = words[index];
+  if (!cue?.[5] || readerState?.lessonId!==l.id) return;
+  const page = readerState.pages.findIndex(p=>p.book+':'+p.page===cue[2]);
+  if (page<0 || page===readerState.index) return;
+  const nearby = words.slice(Math.max(0,index-2),index+3);
+  if (nearby.filter(word=>word[5] && word[2]===cue[2] && Math.abs(word[0]-cue[0])<2000).length<3) return;
+  readerState.index = page;
+  updateReader();
+}
+
 function bindLessonReading(media, l) {
   if (!l.file || !/^A[12]\.[12]-s\d+$/u.test(l.session)) return;
   const reading = lessonReadingWords(l);
   let words = [], highlighted = null, frame = 0;
 
   function update() {
-    const layer = $('#pdf-text-layer');
-    const next = media.isConnected && !media.paused && !media.seeking && !media.ended
-      ? lessonReadingWord(words,media.currentTime*1000,layer) : null;
+    const playing = media.isConnected && !media.paused && !media.seeking && !media.ended;
+    const time = media.currentTime*1000;
+    const index = playing ? listeningWordAt(words,time) : -1;
+    const canFollow = index>=0 && pdfHeldCue===null && route.tab!=='exercise' && !wordInteractionOpen() &&
+      !document.activeElement?.matches('input:not([data-clip-position]),textarea,select');
+    if (canFollow) followReadingPage(l,words,index);
+    const next = index>=0 ? lessonReadingWord(words,time,$('#pdf-text-layer')) : null;
     if (next === highlighted) return;
     highlighted?.classList.remove('is-lesson-reading-word');
     highlighted = next;
     if (!next) return;
     next.classList.add('is-lesson-reading-word');
-    if (pdfHeldCue === null && route.tab !== 'exercise' && !wordInteractionOpen() &&
-        !document.activeElement?.matches('input:not([data-clip-position]),textarea,select')) {
-      keepListeningWordVisible($('#pdf-stage'),next);
-    }
+    if (canFollow) keepListeningWordVisible($('#pdf-stage'),next);
   }
 
   function follow() {

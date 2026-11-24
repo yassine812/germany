@@ -50,3 +50,21 @@ test('uses the timed PDF word only on its matching page and text layer', () => {
   target.dataset.pdfWord = 'Stühle';
   assert.equal(lessonReadingWord(words,650,layer),null);
 });
+
+test('opens a referenced PDF page after three confirmed words from it', () => {
+  const readerState = {lessonId:'clip',index:0,pages:[{book:'notes',page:1},{book:'notes',page:2}]};
+  let changes = 0;
+  const follow = runInNewContext(source+'\n;followReadingPage',{
+    readerState,updateReader(){changes++;}
+  });
+  const cues = [
+    [500,700,'notes:2',5,'guten',true],
+    [700,900,'notes:2',6,'morgen',true],
+    [900,1150,'notes:2',7,'zusammen',true]
+  ];
+  follow({id:'clip'},cues.slice(0,2),0);
+  assert.equal(changes,0);
+  follow({id:'clip'},cues,0);
+  assert.equal(readerState.index,1);
+  assert.equal(changes,1);
+});

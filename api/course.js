@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import {requireSession} from '../lib/session.js';
 
 // The credential grants access only to the existing private course origin.
 // Never follow redirects or proxy methods that can change upstream state.
@@ -34,6 +35,7 @@ export default async function course(req, res) {
   if (!['preview', 'production'].includes(process.env.VERCEL_ENV) || !token) {
     return res.status(503).json({error: 'Ouvre le déploiement privé Deutschweg sur Vercel.'});
   }
+  if (!requireSession(req,res)) return;
   const headers = new Headers({'OAI-Sites-Authorization': 'Bearer ' + token, 'Accept-Encoding':'identity'});
   const range = req.headers.range;
   if (typeof range === 'string') {
