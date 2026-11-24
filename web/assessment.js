@@ -239,10 +239,16 @@ function assessmentResult(level) {
     details = correct + ' / ' + count + ' réponses corrigées sont justes. La présentation écrite se relit avec les conseils de la dernière page.';
   }
   return `<section class="assessment-result card"><img src="assets/fox.svg" alt=""><h1>Bilan ${level} ${count === spec.pages.length ? 'terminé' : 'en cours'}</h1>
-  <p>${count} / ${spec.pages.length} pages validées</p><p>${details}</p>${replay}${spec.exercises && !workbookKeys ? '<p data-workbook-key-status></p>' : ''}
+  <p>${studyPercent(count,spec.pages.length)} % · ${count} / ${spec.pages.length} pages validées</p><p>${details}</p>${replay}${spec.exercises && !workbookKeys ? '<p data-workbook-key-status></p>' : ''}
   <div class="action-row"><a class="secondary" href="#assessment/${level}">Revoir mes réponses</a>
   ${next && count === spec.pages.length ? `<button class="primary" data-continue-level="${next}">Continuer en ${next}</button>` :
     `<a class="primary" href="#path/${level}">Revenir à mon parcours</a>`}</div></section>`;
+}
+
+function assessmentCourseProgress(level) {
+  const pages = assessments[level].pages;
+  const saved = assessmentProgress(level).pages;
+  return courseProgressHTML('Progression du bilan',studyPercent(pages.filter((_,index)=>saved[index]).length,pages.length));
 }
 
 function assessmentHTML(level) {
@@ -254,9 +260,10 @@ function assessmentHTML(level) {
   const paper = assessmentReaderHTML();
   return `<div class="classroom-heading">
     <a class="icon-btn" href="#path/${level}" aria-label="Retour au parcours">${icon('back')}</a>
-    <div><small>${spec.exercises ? 'Tests du cahier Menschen' : 'Ton PDF de formation'}</small><h1>Bilan de fin de niveau ${level}</h1></div>
+    <div><small>Exercices du bilan · ${spec.exercises ? 'Cahier Menschen' : 'Ton PDF de formation'}</small><h1>Bilan de fin de niveau ${level}</h1></div>
     <button class="secondary assessment-jump" data-jump-assessment>${icon('book')} Répondre</button>
-  </div><div class="classroom-layout book-classroom assessment-layout"><section class="classroom-document">${paper}</section>
+  </div><div class="assessment-progress" data-assessment-progress>${assessmentCourseProgress(level)}</div>
+  <div class="classroom-layout book-classroom assessment-layout"><section class="classroom-document">${paper}</section>
     <aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers" tabindex="-1">${assessmentPaperHTML()}</section></aside></div>`;
 }
 
@@ -331,8 +338,11 @@ document.addEventListener('click', event => {
     toast('Écris au moins une réponse sur cette page.');
     return;
   }
+  const level = route.id;
+  const before = levelJourneyPercent(level);
   const index = readerState.index;
   const saved = saveAssessmentPage(index);
+  const newlyValidated = !saved.pages[index];
   saved.pages[index] = true;
   save();
   const following = readerState.pages.findIndex((_, position) => position > index && !saved.pages[position]);
@@ -340,9 +350,13 @@ document.addEventListener('click', event => {
   readerState.index = following === -1 ? earlier : following;
   if (readerState.index < 0) {
     readerState.index = index;
-    navigate('#assessment/' + route.id + '/result');
+    const target = '#assessment/' + level + '/result';
+    if (newlyValidated) showJourneyCelebration({level,before,title:'Bilan '+level+' terminé',target});
+    else navigate(target);
   } else {
     updateReader();
+    $('[data-assessment-progress]').innerHTML = assessmentCourseProgress(level);
+    if (newlyValidated) toast('Bien joué, page validée !');
     const answers = $('#classroom-answers');
     answers.focus({preventScroll:true});
     answers.scrollIntoView({block:'nearest'});

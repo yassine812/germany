@@ -363,3 +363,18 @@ body:has(.reader.is-expanded) {overflow:hidden}
 .clip-controls input {flex:1;min-width:0;accent-color:var(--world-bright);cursor:pointer}
 .split-classroom .media-card:fullscreen {display:flex;flex-direction:column;justify-content:center;background:#141d31}
 .split-classroom .media-card:fullscreen video {max-height:calc(100dvh - 95px);width:100%;object-fit:contain}
+.lesson-activities {
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:7px 16px;
+  padding:8px 10px;margin-bottom:10px;border-block:1px solid var(--world-edge);color:var(--world-deep);
+}
+.lesson-activities ul {display:flex;flex-wrap:wrap;gap:5px;list-style:none;margin:0;padding:0}
+.lesson-activities li {display:flex;align-items:center;gap:4px}
+.lesson-activities li.done {color:var(--world-deep);background:var(--world-bright)}
+.lesson-activities .icon {width:14px;height:14px}
+.course-progress {display:flex;align-items:center;gap:8px;flex:1;min-width:min(100%,245px);font-size:.8rem;color:var(--world-deep)}
+.course-progress strong {font-size:.85rem;white-space:nowrap}
+.assessment-progress {margin-bottom:10px;max-width:36rem}
+@media (max-width:480px) {
+  .lesson-activities {padding:6px 4px;gap:6px}
+  .lesson-activities .course-progress {flex-basis:100%}
+}

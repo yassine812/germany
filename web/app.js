@@ -72,42 +72,38 @@ function completeLesson(id) {
     toast('Il reste une activité à terminer.');
     return;
   }
-  if (!groupDone(group)) {
-    group.parts.forEach(clip => { progress(clip.id).completed = true; });
-    state.xp += 30;
-    const day = state.days[today()] ||= {seconds:0};
-    day.lessons = (day.lessons || 0) + 1;
-    toast(group.level===preparationLevel?'Leçon terminée ! + 30 XP':'Chapitre terminé ! + 30 XP');
-    const {level} = group;
-    const next = nextJourneyLesson(current);
-    const assessment = assessments[level];
-    const levelFinished = reviewedGroups.every(chapter => chapter.level !== level || groupDone(chapter));
-    if (levelFinished && assessment &&
-        Object.values(assessmentProgress(level).pages).filter(Boolean).length < assessment.pages.length) {
-      save();
-      readerState = null;
-      navigate('#assessment/' + level);
-      return;
-    }
-    if (level !== preparationLevel && next?.level === level && next.session === current.session) {
-      save();
-      readerState = null;
-      quiz = null;
-      navigate('#lesson/' + groupStart(next).id + '/watch');
-      return;
-    }
-    if (next) {
-      foxJourney = {from: journeyStopId(group), to: journeyStopId(next)};
-      state.journeyNext = {...state.journeyNext, [next.level]:journeyStopId(next)};
-      state.level = next.level;
-      state.unit = next.unit;
-    }
+  const {level} = group;
+  let target = '#path/' + level;
+  if (groupDone(group)) {
+    navigate(target);
+    return;
+  }
+  const before = levelJourneyPercent(level);
+  group.parts.forEach(clip => { progress(clip.id).completed = true; });
+  state.xp += 30;
+  const day = state.days[today()] ||= {seconds:0};
+  day.lessons = (day.lessons || 0) + 1;
+  const next = nextJourneyLesson(current);
+  const assessment = assessments[level];
+  const assessmentPending = assessment?.pages.some((_,index)=>!assessmentProgress(level).pages[index]);
+  const lessonsFinished = reviewedGroups.every(chapter=>chapter.level!==level || groupDone(chapter));
+  if (lessonsFinished && assessmentPending) {
+    target = '#assessment/' + level;
+  } else if (level !== preparationLevel && next?.level === level && next.session === current.session) {
+    target = '#lesson/' + groupStart(next).id + '/watch';
+  } else if (next) {
+    const nextStop = journeyStopId(next);
+    foxJourney = {from:journeyStopId(group), to:nextStop};
+    state.journeyNext = {...state.journeyNext, [next.level]:nextStop};
+    state.level = next.level;
+    state.unit = next.unit;
+    target = '#path/' + state.level;
   }
   save();
-  const target = '#path/' + state.level;
-  // Discard an explicit level in the previous URL only after progress is saved.
-  navigate(target);
+  showJourneyCelebration({level,before,title:(level===preparationLevel?'Leçon terminée':'Chapitre terminé')+' · '+group.title,
+    target,reward:30});
 }
+
 function stopOtherMedia(active){
   for(const media of document.querySelectorAll('audio,video'))if(media!==active&&!media.paused)media.pause();
   if(wordPlayer&&wordPlayer!==active)wordPlayer.pause();

@@ -16,6 +16,46 @@ function levelLabel(level) {
   return level === preparationLevel ? 'Préparation' : 'Niveau ' + level;
 }
 
+function studyPercent(done, total) {
+  return total ? Math.round(100 * done / total) : 0;
+}
+
+function levelJourneyPercent(level) {
+  const lessons = reviewedGroups.filter(group=>group.level===level);
+  const assessment = assessments[level];
+  const passed = assessment && assessment.pages.every((_,index)=>assessmentProgress(level).pages[index]);
+  return studyPercent(lessons.filter(groupDone).length + Number(Boolean(passed)), lessons.length + Number(Boolean(assessment)));
+}
+
+function showJourneyCelebration({level,before,title,target,reward=0}) {
+  const dialog = $('#journey-celebration');
+  const after = levelJourneyPercent(level);
+  persistMedia();
+  dialog.dataset.from = location.hash;
+  dialog.dataset.next = target;
+  dialog.dataset.world = level;
+  dialog.innerHTML = `<img src="assets/fox.svg" alt="">
+    <h2 id="journey-celebration-title">Bravo !</h2><p>${esc(title)}</p>
+    ${reward ? `<strong class="journey-reward">+ ${reward} XP</strong>` : ''}
+    <div class="journey-celebration-progress"><span>${levelLabel(level)}</span><strong>${after} %</strong></div>
+    <div class="journey-celebration-track" role="progressbar" aria-label="Progression du niveau"
+      aria-valuemin="0" aria-valuemax="100" aria-valuenow="${after}"><span style="width:${after}%"></span></div>
+    <form method="dialog"><button class="primary" autofocus>Continuer</button></form>`;
+  dialog.showModal();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && after > before) {
+    $('.journey-celebration-track span',dialog).animate(
+      [{width:before+'%'},{width:after+'%'}], {duration:650,easing:'ease-out'});
+  }
+}
+
+document.getElementById('journey-celebration').addEventListener('close', event=>{
+  const {from,next} = event.currentTarget.dataset;
+  if (!next || location.hash!==from) return;
+  readerState = null;
+  quiz = null;
+  navigate(next);
+});
+
 function recordingJourneyHTML() {
   const recordings = [...recordingsBySession.values()];
   const zones = levels.map(level => ({level, stops:journeyStops(level, recordings)}));
@@ -57,7 +97,8 @@ function journeyStops(level, recordings) {
       ? [pages.length ? pageText : '', `${lessonMinutes(lesson)} min`].filter(Boolean).join(' · ')
       : `${lesson.chapters.filter(groupDone).length} / ${lesson.chapters.length} chapitres`;
     return {id:lesson.id, recording:lesson, title:lesson.title, complete, started, subtitle,
-      symbol:lesson.kind === 'audio' ? 'headphones' : 'play', clip:groupStart(lesson).id};
+      symbol:lesson.kind === 'audio' ? 'headphones' : 'play', clip:groupStart(lesson).id,
+      exercises:lesson.parts.some(lessonHasExercises)};
   });
   const assessment = assessments[level];
   if (assessment) {
@@ -90,6 +131,7 @@ function journeyZone(level, stops, index, current) {
   const firstNew = stops.findIndex(stop => (stop.recording || stop.assessment) && !stop.complete);
   const travelled = firstNew < 0 ? 100 : 100 * (firstNew + .46) / (stops.length + 1);
   const heading = 'journey-'+level;
+  const percent = levelJourneyPercent(level);
   return `<section class="journey-zone" id="${heading}" aria-labelledby="${heading}-title" data-world="${level}" style="--zone-height:${height}px">
     <svg class="journey-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true">
       <path class="journey-line-bed" d="${path}"/>
@@ -100,6 +142,7 @@ function journeyZone(level, stops, index, current) {
       <span class="journey-marker-icon">${icon(levelIcons[index])}</span>
       <div class="journey-step-copy">
         <h2 id="${heading}-title">${levelLabel(level)}</h2><p>${levelNames[level]}</p>
+        <div class="journey-level-progress"><progress max="100" value="${percent}" aria-label="Progression du niveau"></progress><small>${percent} %</small></div>
       </div>
     </header>
     ${stops.map((stop,i) => journeyStep(stop, positions[i], i, stop === current)).join('')}
@@ -108,7 +151,11 @@ function journeyZone(level, stops, index, current) {
 
 function journeyStep(stop, [x,y], index, current) {
   const label = `<span class="journey-pin">${icon(stop.complete ? 'check' : stop.symbol)}</span>
-    <span class="journey-step-copy"><strong>${esc(stop.title)}</strong><small>${esc(stop.subtitle)}</small></span>`;
+    <span class="journey-step-copy">
+      <span class="journey-step-types">${stop.assessment ? '<span class="exercise-type">Exercices du bilan</span>' :
+        `<span class="lesson-type">Leçon</span><span class="exercise-type">${stop.exercises ? 'Exercices PDF' : 'Exercice oral'}</span>`}</span>
+      <strong>${esc(stop.title)}</strong><small>${esc(stop.subtitle)}</small>
+    </span>`;
   const linkState = current ? ' aria-current="step"' : '';
   return `<div class="map-step ${index%2 ? 'label-right' : 'label-left'} ${stop.complete ? 'is-complete' : ''} ${current ? 'is-current' : ''}"
       id="map-${stop.id}" style="--stop-x:${x}%;top:${y}px">

@@ -56,7 +56,7 @@ function quizHTML() {
   const say = item.kind === 'say';
   const dictation = item.kind === 'dictation';
   const label = say ? 'Prononciation' : dictation ? 'Dictée' : item.audio ? 'Compréhension orale' : item.options ? 'Choix de réponse' : 'Écriture';
-  return `<div class="quiz-top"><progress value="${q.index}" max="${q.questions.length}" aria-label="Progression dans cet atelier"></progress><span>${q.index + 1} / ${q.questions.length}</span></div>
+  return `<div class="quiz-top"><progress value="${q.index}" max="${q.questions.length}" aria-label="Progression dans cet exercice"></progress><span>${studyPercent(q.index,q.questions.length)} % · ${q.index + 1} / ${q.questions.length}</span></div>
     <section class="question-card ${say || dictation ? 'oral-question' : ''}"><div class="eyebrow">${label}</div><h2 id="practice-question" tabindex="-1">${esc(item.prompt)}</h2>
     ${item.kind ? pronunciationHTML(item) : ''}
     ${item.audio ? audioHTML(item.audio, true) : ''}
@@ -95,8 +95,8 @@ function quizResult() {
     passed && canFinishLesson(l) ? `<button class="primary" data-complete="${q.lesson}">${p.completed ? 'Mon parcours' : 'Valider ma leçon'}</button>` :
       `<button class="primary" data-start="${q.lesson}">Revenir au cours</button>`;
   return `<div class="card success">
-    <img src="assets/fox.svg" alt=""><h2>${passed ? 'Wunderbar !' : 'Encore un tour ?'}</h2>
-    <p>${q.correct} / ${graded} réponses correctes${q.spoken ? ' · ' + q.spoken + ' exercices de prononciation' : ''}.</p>
+    <img src="assets/fox.svg" alt=""><h2>${passed ? 'Bravo !' : 'Encore un tour ?'}</h2>
+    <p>${graded ? studyPercent(q.correct,graded)+' % · ' : ''}${q.correct} / ${graded} réponses correctes${q.spoken ? ' · ' + q.spoken + ' exercices de prononciation' : ''}.</p>
     <p>${passed ? 'Notion validée.' : 'Il faut 80 % de bonnes réponses pour valider cette notion.'}</p>
     ${q.reward ? '<div class="reward">+ 20 XP</div>' : ''}
     <div class="action-row"><button class="secondary" data-action="retry-quiz">Recommencer</button>${nextButton}</div>
@@ -144,7 +144,7 @@ function nextQuestion() {
     const l = lesson(quiz.lesson);
     const saved = progress(quiz.lesson);
     const {graded, passed} = quizScore();
-    saved.score = Math.max(saved.score || 0, quiz.correct / graded);
+    saved.score = Math.max(saved.score || 0, graded ? quiz.correct / graded : 0);
     if (passed) {
       saved.practicedTopics ||= {};
       if (!saved.practicedTopics[quiz.topic]) {
@@ -157,6 +157,7 @@ function nextQuestion() {
     }
     save();
     $('#xp-stat').textContent = state.xp + ' XP';
+    updateCourseFinish();
   }
   renderQuiz();
 }

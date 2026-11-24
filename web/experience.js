@@ -89,7 +89,16 @@ document.addEventListener('click', event => {
 document.addEventListener('click',e=>{
   const start=e.target.closest('[data-start]');if(start&&lesson(start.dataset.start)){state.unit=lesson(start.dataset.start).unit;save();}
   const marked=e.target.closest('[data-study-mark]');
-  if(marked){progress(route.id)[marked.dataset.studyMark]=true;save();updateCourseFinish();marked.classList.add('checked');marked.innerHTML=icon('check')+(marked.dataset.studyMark==='watch'?'Cours écouté':'Exercices travaillés');}
+  if(marked){
+    const saved = progress(route.id);
+    const key = marked.dataset.studyMark;
+    if (key==='read' && !saved.read) toast('Bien joué, exercices terminés !');
+    saved[key]=true;
+    save();
+    updateCourseFinish();
+    marked.classList.add('checked');
+    marked.innerHTML=icon('check')+(key==='watch'?'Leçon écoutée':'Exercices terminés');
+  }
   const replay=e.target.closest('[data-exercise-replay]');
   if(replay){const area=replay.closest('.exercise-listen'),audio=area.querySelector('audio');area.querySelector('select').value='.6';audio.playbackRate=replayRate;audio.currentTime=0;audio.play().catch(()=>toast('Appuie sur lecture pour écouter.'));}
   const letter=e.target.closest('[data-answer-letter]');

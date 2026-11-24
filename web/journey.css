@@ -148,3 +148,39 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 @keyframes road-markers {to {stroke-dashoffset:-22}}
 @keyframes fox-float {50% {translate:0 -5px}}
 @keyframes map-arrival {from {opacity:.65;translate:0 6px} to {opacity:1;translate:0 0}}
+.journey-step-types {display:flex;flex-wrap:wrap;gap:4px 6px}
+.label-left .journey-step-types {justify-content:flex-end}
+.lesson-type,.exercise-type {
+  border-radius:5px;padding:2px 6px;font-size:.72rem;font-weight:850;line-height:1.25;
+}
+.lesson-type {color:var(--world-deep);background:var(--world-tint)}
+.exercise-type {color:#683f79;background:#f3e3f9}
+.journey-level-progress {display:flex;align-items:center;gap:7px;max-width:150px}
+.journey-level-progress progress,.course-progress progress {
+  flex:1;min-width:0;height:6px;border:0;border-radius:9px;accent-color:var(--world);
+}
+.journey-level-progress progress::-webkit-progress-bar,.course-progress progress::-webkit-progress-bar {
+  background:var(--world-edge);border-radius:9px;
+}
+.journey-level-progress progress::-webkit-progress-value,.course-progress progress::-webkit-progress-value {
+  background:var(--world);border-radius:9px;
+}
+.journey-level-progress small {font-weight:850;white-space:nowrap}
+
+#journey-celebration {
+  width:min(460px,calc(100% - 28px));max-height:calc(100dvh - 32px);padding:clamp(18px,5vw,32px);
+  border:1px solid var(--world-edge);border-radius:24px;background:#fffaff;color:var(--world-deep);text-align:center;
+}
+#journey-celebration::backdrop {background:#2213359c}
+#journey-celebration>img {width:72px;height:72px;margin-bottom:4px}
+#journey-celebration h2 {font:900 clamp(2rem,6vw,2.6rem)/1 Nunito,system-ui,sans-serif;margin:4px 0 10px}
+#journey-celebration p {margin:0 0 12px}
+.journey-reward {display:inline-block;padding:4px 11px;border-radius:8px;color:#865014;background:#fff0ca}
+.journey-celebration-progress {display:flex;justify-content:space-between;gap:8px;margin:18px 0 7px;font-size:.9rem}
+.journey-celebration-track {height:11px;background:var(--world-edge);border-radius:12px;overflow:hidden}
+.journey-celebration-track span {display:block;height:100%;background:var(--world);border-radius:inherit}
+#journey-celebration form {margin:20px 0 0}
+#journey-celebration .primary {width:100%;background:var(--world);border-color:var(--world-deep)}
+@container journey-trail (max-width:550px) {
+  .journey-zone .journey-step-types {justify-content:flex-start}
+}

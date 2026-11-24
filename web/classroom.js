@@ -11,7 +11,8 @@ function classroomLessonHTML(l){
   if(route.tab==='practice'){
     if(!quiz||quiz.lesson!==l.id)startQuiz(l.id,false);
     return `<div class="practice-heading"><button class="back" data-tab="watch">${icon('back')} Cours et PDF</button><span>${level}</span></div>
-      <div class="quiz-shell"><header class="practice-title"><span class="practice-symbol">${icon('mic')}</span><div><h1>Atelier de pratique</h1><p>${esc(group.title)}</p></div></header>
+      <div class="quiz-shell"><header class="practice-title"><span class="practice-symbol">${icon('mic')}</span><div><h1>Exercice oral</h1><p>${esc(group.title)}</p></div></header>
+      <div data-lesson-progress>${lessonActivityHTML(l)}</div>
       ${(l.topics||[l.topic]).length > 1 ? notionTabs(l) : ''}<div id="quiz-area">${quizHTML()}</div></div>`;
   }
   if (pdfSyncLesson !== l.id) {
@@ -25,21 +26,22 @@ function classroomLessonHTML(l){
   return `<div class="classroom-heading">
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
     <div><small>${level} · ${prep ? 'Leçon' : esc(recordingFor(l)?.title)+' · Chapitre'} ${number}</small><h1>${esc(group.title)}</h1></div>
-    <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Pratiquer à l’oral</button>
+    <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Exercice oral</button>
     <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : (prep ? 'Terminer la leçon' : 'Terminer ce chapitre')}</button>
   </div>
+  <div data-lesson-progress>${lessonActivityHTML(l)}</div>
   <div class="classroom-layout split-classroom" style="--study-split:${split}%">
     <section class="classroom-document" id="study-document" aria-label="Le PDF de ton cours">${paper}</section>
     <div class="study-divider" role="separator" aria-label="Ajuster la largeur du PDF" aria-orientation="vertical" aria-controls="study-document" aria-valuemin="35" aria-valuemax="65" aria-valuenow="${split}" tabindex="0"></div>
     <aside class="classroom-coach">
-      <section class="classroom-video" aria-label="Ton enregistrement">
-        <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Enregistrement du cours</h2>
+      <section class="classroom-video" aria-label="Vidéo ou audio de la leçon">
+        <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Leçon · Enregistrement</h2>
         ${chapterListHTML(l)}
         ${mediaHTML(l)}
         ${passageListHTML(l)}
         <div class="classroom-video-actions">
           <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
-          <button class="link-button" data-jump-exercises ${lessonExerciseIndex()<0?'hidden':''}>${icon('book')} ${pdfTasks(activePaper()).length?'Exercices de la page':'Voir les exercices'}</button>
+          <button class="link-button" data-jump-exercises ${lessonExerciseIndex()<0?'hidden':''}>${icon('book')} ${pdfTasks(activePaper()).length?'Exercices PDF de la page':'Voir les exercices PDF'}</button>
           <button class="link-button" data-open-lesson-notes>${icon('book')} Mes notes</button>
         </div>
       </section>
@@ -145,17 +147,46 @@ function lessonHasExercises(l) {
   return getPages(l).some(page => pdfTasks(page).length);
 }
 
-function canFinishLesson(l) {
+function lessonActivities(l) {
   const group = reviewedGroup(l);
-  if (groupDone(group)) return true;
-  const saved = group.parts.map(clip => state.lessons[clip.id]);
-  if (!saved.every(p => p?.watch || p?.completed) || !saved.some(p => p?.practice || p?.completed)) return false;
-  return saved.some(p => p?.read) || !group.parts.some(lessonHasExercises);
+  const saved = group.parts.map(clip=>state.lessons[clip.id]);
+  const complete = groupDone(group);
+  const steps = [{key:'lesson',title:'Leçon',done:saved.every(p=>p?.watch || p?.completed)}];
+  if (group.parts.some(lessonHasExercises)) {
+    steps.push({key:'exercise',title:'Exercices PDF',done:complete || saved.some(p=>p?.read)});
+  }
+  steps.push({key:'exercise',title:'Exercice oral',done:saved.some(p=>p?.practice || p?.completed)});
+  return steps;
+}
+
+function courseProgressHTML(label, percent) {
+  return `<div class="course-progress">
+    <span>${esc(label)}</span><progress value="${percent}" max="100" aria-label="${esc(label)}"></progress><strong>${percent} %</strong>
+  </div>`;
+}
+
+function lessonActivityHTML(l) {
+  const steps = lessonActivities(l);
+  const percent = studyPercent(steps.filter(step=>step.done).length,steps.length);
+  return `<section class="lesson-activities" aria-label="Activités de la leçon">
+    <ul>${steps.map(step=>`<li class="${step.key}-type ${step.done?'done':''}" aria-label="${step.title} · ${step.done?'terminé':'à faire'}">
+      ${icon(step.done?'check':step.key==='lesson'?'play':'book')}${step.title}</li>`).join('')}</ul>
+    ${courseProgressHTML('Progression de la leçon',percent)}
+  </section>`;
+}
+
+function canFinishLesson(l) {
+  return Boolean(l && lessonActivities(l).every(step=>step.done));
 }
 
 function updateCourseFinish() {
+  if (route.page!=='lesson') return;
+  const l = lesson(route.id);
+  if (!l) return;
   const button = $('[data-course-completion]');
-  if (button && route.page==='lesson') button.hidden = !canFinishLesson(lesson(route.id));
+  if (button) button.hidden = !canFinishLesson(l);
+  const activity = $('[data-lesson-progress]');
+  if (activity) activity.innerHTML = lessonActivityHTML(l);
 }
 
 function exercisePanelHTML(l) {
@@ -168,7 +199,7 @@ function exercisePanelHTML(l) {
       ${progress(l.id).read ? 'Exercices terminés' : 'Terminer les exercices'}</button>` :
     '<button class="study-check" data-finish-page>' + icon('check') + ' Valider cette page</button>';
   return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button>
-    <h2>Exercices de la page</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div>
+    <h2>Exercices PDF de la page</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div>
     <div class="page-task-list">${printed.map((task,i) => printedTaskHTML(b,p,l,task,i)).join('')}</div>${pageFinish}`;
 }
 
@@ -218,7 +249,14 @@ function checkCurrentTask(id){
     return {...result,part,index:i};
   });
   feedback.innerHTML=checked.map(c=>`<div class="part-result ${c.status}"><strong>${esc(c.part.label)} · ${esc(c.message)}</strong>${c.expected?`<p>Réponse attendue : <span lang="de">${esc(c.expected)}</span></p>`:''}${c.status==='open'?grammarHTML(state.answers[key+':part'+c.index]||''):''}</div>`).join('');
-  const closed=checked.filter(c=>c.status!=='open');if(closed.length&&closed.every(c=>c.status==='correct')&&route.page==='lesson'){progress(route.id).read=true;save();updateCourseFinish();}
+  const closed=checked.filter(c=>c.status!=='open');
+  if(closed.length&&closed.every(c=>c.status==='correct')&&route.page==='lesson'){
+    const saved=progress(route.id);
+    if (!saved.read) toast('Bravo, les réponses corrigées sont justes !');
+    saved.read=true;
+    save();
+    updateCourseFinish();
+  }
 }
 
 async function loadPDFWords(){
@@ -323,7 +361,7 @@ function afterPDFPageChange() {
     const jumper = $('[data-jump-exercises]');
     if (jumper) {
       jumper.hidden = lessonExerciseIndex() < 0;
-      jumper.innerHTML = icon('book') + (hasExercises?' Exercices de la page':' Voir les exercices');
+      jumper.innerHTML = icon('book') + (hasExercises?' Exercices PDF de la page':' Voir les exercices PDF');
     }
     const bookToggle = $('[data-book-answers-toggle]');
     if (bookToggle) bookToggle.hidden = !hasExercises;
