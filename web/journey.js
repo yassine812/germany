@@ -2,6 +2,12 @@
 
 let foxJourney = null;
 const levels = ['A1.1', 'A1.2', 'A2.1'];
+const levelNames = {
+  'A1.1': 'Les premiers mots',
+  'A1.2': 'L’allemand au quotidien',
+  'A2.1': 'Des phrases qui voyagent'
+};
+const levelIcons = ['leaf', 'book', 'star'];
 
 function recordingJourneyHTML() {
   const all = data.lessons.filter(l => l.level === state.level);
@@ -9,29 +15,49 @@ function recordingJourneyHTML() {
   const current = remaining.find(l => l.id === state.journeyNext?.[state.level]) || remaining[0] || all.at(-1);
   const completed = all.filter(l => isDone(l.id)).length;
   if (!current) return `<div class="journey-header"><h1>Mon parcours</h1>${journeyLevels()}</div>`;
-  const openUnit = foxJourney ? current.unit : state.unit;
-  return `<div class="journey-header"><div><h1>Mon parcours</h1><p>${completed} étapes terminées sur ${all.length}</p></div>${journeyLevels()}</div>
-    ${journeyModes()}
-    <div class="journey-grid"><section class="journey-trail" aria-label="Carte de progression">
-      <div class="journey-current">
+  const openUnit = foxJourney ? current.unit : state.journeyOpen?.[state.level] ?? current.unit;
+  const nextLevel = levels[levels.indexOf(state.level) + 1];
+  const first = all[0], last = all.at(-1);
+  const finished = completed === all.length;
+  return `<div class="journey-header"><h1>Mon parcours</h1>${journeyModes()}</div>
+    ${journeyLevels()}
+    <div class="journey-grid"><section class="journey-trail" aria-label="Carte du niveau ${state.level}">
+      <header class="journey-current">
         <img src="assets/journey.svg" alt="">
-        <div><small>TA PROCHAINE ÉTAPE</small><h2>${esc(current.title)}</h2><p>${Math.max(1, Math.ceil(current.effectiveDuration / 60))} min de cours</p>
-        <button class="primary" data-start="${current.id}">${icon('play')} ${progress(current.id).position ? 'Reprendre' : 'Commencer'}</button></div>
+        <div><span class="world-kicker">Niveau ${state.level}</span><h2>${levelNames[state.level]}</h2>
+        <p>${completed} / ${all.length} leçons terminées</p>
+        ${finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
+        <button class="primary" data-start="${current.id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : progress(current.id).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
+        <p class="world-next">${esc(current.title)} · ${lessonMinutes(current)} min</p>`}</div>
+      </header>
+      <div class="level-boundary">
+        <span class="boundary-icon">${icon('play')}</span>
+        <div><strong>Début du niveau ${state.level}</strong><button data-start="${first.id}" class="link-button">${esc(first.title)}</button></div>
+        <button class="secondary jump-finish" data-jump-finish>Voir la fin</button>
       </div>
       ${data.units[state.level].map((title, index) => journeyChapter(all, current, title, index, openUnit)).join('')}
-    </section><aside>${dailyPanel()}</aside></div>`;
+      <footer class="level-boundary level-finish" id="level-finish" tabindex="-1">
+        <span class="boundary-icon">${icon('trophy')}</span>
+        <div><strong>${finished ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${last.id}" class="link-button">${esc(last.title)}</button></div>
+        ${nextLevel ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
+      </footer>
+    </section><aside class="journey-rail">${dailyPanel()}</aside></div>`;
+}
+
+function lessonMinutes(l) {
+  return Math.max(1, Math.ceil(l.effectiveDuration / 60));
 }
 
 function journeyChapter(all, current, title, unit, openUnit) {
   const lessons = all.filter(l => l.unit === unit);
   if (!lessons.length) return '';
   const done = lessons.filter(l => isDone(l.id)).length;
-  const height = lessons.length * 150 + 26;
-  const points = lessons.map((_, i) => [50 + Math.sin(i * .95) * 20, i * 150 + 73]);
+  const height = lessons.length * 104 + 16;
+  const points = lessons.map((_, i) => [50 + Math.sin(i * 1.4) * 9, i * 104 + 60]);
   const line = points.map(([x,y],i) => {
     if (!i) return `M ${x*6} ${y}`;
     const [previousX, previousY] = points[i-1];
-    return `C ${previousX*6} ${previousY+75} ${x*6} ${y-75} ${x*6} ${y}`;
+    return `C ${previousX*6} ${previousY+50} ${x*6} ${y-50} ${x*6} ${y}`;
   }).join(' ');
   return `<details class="map-chapter journey-chapter" data-map-unit="${unit}" ${unit === openUnit ? 'open' : ''}>
     <summary><span class="chapter-emblem">${icon(done === lessons.length ? 'trophy' : 'book')}</span>
@@ -41,19 +67,27 @@ function journeyChapter(all, current, title, unit, openUnit) {
     ${lessons.map((l, i) => {
       const next = l.id === (foxJourney?.to || current.id);
       const p = state.lessons[l.id] || {};
-      return `<div id="map-${l.id}" class="map-step ${next ? 'is-current' : ''} ${p.completed ? 'is-complete' : ''}" style="left:${points[i][0]}%;top:${i*150+15}px">
+      return `<div id="map-${l.id}" class="map-step ${i%2 ? 'label-right' : 'label-left'} ${next ? 'is-current' : ''} ${p.completed ? 'is-complete' : ''}" style="--stop-x:${points[i][0]}%;top:${i*104+29}px">
         ${next ? '<img class="journey-mascot" src="assets/fox.svg" alt="Ta position sur la carte">' : ''}
         <button class="map-orbit" data-start="${l.id}" aria-label="${esc(l.title)}${p.completed ? ' · terminée' : ''}">${icon(p.completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
-        <div class="map-step-label"><strong>${esc(l.title)}</strong><span>${Math.max(1, Math.ceil(l.effectiveDuration/60))} min</span>
-        <div class="map-task-dots" aria-label="${[p.watch,p.read,p.practice].filter(Boolean).length} activités terminées sur 3">${[p.watch,p.read,p.practice].map(value => `<i class="${value ? 'done' : ''}"></i>`).join('')}</div></div>
+        <button class="map-step-label" data-start="${l.id}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${next && !p.completed ? (p.position ? 'À reprendre · ' : 'Prochaine leçon · ') : ''}${lessonMinutes(l)} min</span></button>
       </div>`;
     }).join('')}</div>
   </details>`;
 }
 
 function journeyLevels() {
-  return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map(level =>
-    `<a href="#${route.page === 'books-path' ? 'books-path' : 'path'}/${level}" ${level === state.level ? 'aria-current="page"' : ''}>${level}</a>`).join('')}</nav>`;
+  const reading = route.page === 'books-path';
+  return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map((level, index) => {
+    const lessons = reading ? data.books.filter(b => b.level === level).flatMap(b => b.pages.map(p => [b, p])) : data.lessons.filter(l => l.level === level);
+    const done = reading ? lessons.filter(([b, p]) => readingProgress(b)[p.page]).length : lessons.filter(l => isDone(l.id)).length;
+    return `<a class="world-card" data-world="${level}" href="#${reading ? 'books-path' : 'path'}/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
+      <span class="world-card-icon">${icon(levelIcons[index])}</span>
+      <span class="world-card-body"><strong>Niveau ${level}</strong><span>${levelNames[level]}</span>
+      <progress value="${done}" max="${lessons.length || 1}" aria-label="Progression ${level}"></progress>
+      <small>${done} / ${lessons.length} ${reading ? 'pages' : 'leçons'}</small></span>
+    </a>`;
+  }).join('')}</nav>`;
 }
 
 function journeyModes() {
@@ -134,8 +168,8 @@ function readingProgress(book) {
 
 function bookJourneyHTML() {
   const books = data.books.filter(b => b.level === state.level);
-  return `<div class="journey-header"><div><h1>Parcours des livres</h1><p>Lis la page, écoute et fais les exercices à ton rythme.</p></div>${journeyLevels()}</div>
-  ${journeyModes()}<div class="journey-grid"><section class="reading-journey" aria-label="Livres de ce niveau">
+  return `<div class="journey-header"><h1>Parcours des livres</h1>${journeyModes()}</div>
+  ${journeyLevels()}<div class="journey-grid"><section class="reading-journey" aria-label="Livres du niveau ${state.level}">
   ${books.map(book => {
     const pagesDone = readingProgress(book);
     const count = book.pages.filter(p => pagesDone[p.page]).length;
@@ -150,6 +184,11 @@ function bookJourneyHTML() {
 }
 
 document.addEventListener('click', event => {
+  if (event.target.closest('[data-jump-finish]')) {
+    const end = document.getElementById('level-finish');
+    end.focus({preventScroll:true});
+    end.scrollIntoView({block:'center'});
+  }
   const button = event.target.closest('[data-finish-page]');
   if (!button || route.page !== 'book') return;
   const current = activePaper();

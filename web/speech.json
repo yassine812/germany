@@ -1,0 +1,389 @@
+{
+  "alphabet": [
+    {
+      "text": "A · B · C",
+      "model": "A. B. C.",
+      "tip": "Détache les trois lettres. En allemand, C commence par le son « ts ».",
+      "alphabetAnswer": "abc"
+    },
+    {
+      "text": "E · I · U",
+      "model": "E. I. U.",
+      "tip": "Fais durer chaque voyelle. Le I allemand se prononce comme le « i » français.",
+      "alphabetAnswer": "eiu"
+    },
+    {
+      "text": "Ä · Ö · Ü",
+      "model": "Ä. Ö. Ü.",
+      "tip": "Pour Ü, garde le son « i » en arrondissant les lèvres.",
+      "alphabetAnswer": "äöü"
+    },
+    {
+      "text": "W · V · J",
+      "model": "W. V. J.",
+      "tip": "W ressemble à « vé », V à « fao » et J à « yott ».",
+      "alphabetAnswer": "wvj"
+    },
+    {
+      "text": "Haus",
+      "model": "Haus.",
+      "tip": "Dans Haus, « au » se prononce en un seul mouvement, de « a » vers « ou »."
+    },
+    {
+      "text": "Schule",
+      "model": "Schule.",
+      "tip": "Commence par le son « ch » de « chat »."
+    },
+    {
+      "text": "D · E · F · G",
+      "model": "D. E. F. G.",
+      "tip": "Prononce G comme « gué », avec le g de « gare ».",
+      "alphabetAnswer": "defg"
+    },
+    {
+      "text": "Apfel",
+      "tip": "Écoute le groupe « pf » au milieu du mot. Ferme les lèvres pour le p, puis laisse passer l’air pour le f."
+    },
+    {
+      "text": "H · I · J",
+      "model": "H. I. J.",
+      "tip": "J se dit « yott ». Sépare le H, le I et le J.",
+      "alphabetAnswer": "hij"
+    },
+    {
+      "text": "K · L · M",
+      "model": "K. L. M.",
+      "tip": "Le nom du K est « ka ». Garde une petite pause après chaque lettre.",
+      "alphabetAnswer": "klm"
+    },
+    {
+      "text": "N · O · P · Q",
+      "model": "N. O. P. Q.",
+      "tip": "Le nom du Q ressemble à « kou ».",
+      "alphabetAnswer": "nopq"
+    },
+    {
+      "text": "Quelle",
+      "tip": "Dans Quelle, qu se prononce « kv »."
+    },
+    {
+      "text": "R · S · T · U",
+      "model": "R. S. T. U.",
+      "tip": "Le U allemand se prononce « ou ».",
+      "alphabetAnswer": "rstu"
+    },
+    {
+      "text": "Sonne",
+      "tip": "Le premier s sonne comme le z de « zéro »."
+    },
+    {
+      "text": "Uhr",
+      "tip": "Fais durer le son « ou ». Le h indique une voyelle longue."
+    },
+    {
+      "text": "ß",
+      "model": "Eszett.",
+      "tip": "Cette lettre s’appelle « Eszett ». Dans un mot, elle se prononce comme un s.",
+      "alphabetAnswer": "ß"
+    },
+    {
+      "text": "müde",
+      "tip": "Pour ü, dis « i » en gardant les lèvres arrondies."
+    },
+    {
+      "text": "schön",
+      "tip": "Pour ö, arrondis les lèvres en partant du son « é »."
+    },
+    {
+      "text": "mein",
+      "tip": "Le groupe ei se prononce « aï »."
+    },
+    {
+      "text": "Liebe",
+      "tip": "Le groupe ie se prononce avec un i long."
+    },
+    {
+      "text": "heute",
+      "tip": "Le groupe eu réunit deux sons en une seule syllabe. Écoute le changement de voyelle."
+    },
+    {
+      "text": "Sport",
+      "tip": "En début de mot, sp commence par « ch », suivi d’un p."
+    },
+    {
+      "text": "Straße",
+      "tip": "En début de mot, st commence par « ch », suivi d’un t. Le ß garde un son s."
+    },
+    {
+      "text": "ich",
+      "tip": "Pour le ch de ich, approche le milieu de la langue du palais et laisse passer l’air."
+    },
+    {
+      "text": "Buch",
+      "tip": "Le ch de Buch se forme plus au fond de la bouche que celui de ich."
+    },
+    {
+      "text": "W · X · Y · Z",
+      "model": "W. X. Y. Z.",
+      "tip": "La lettre Y s’appelle « Ypsilon ». Le nom de Z commence par « ts ».",
+      "alphabetAnswer": "wxyz"
+    },
+    {
+      "text": "A · B · C · D · E · F · G · H · I · J · K · L · M · N · O · P · Q · R · S · T · U · V · W · X · Y · Z",
+      "model": "A. B. C. D. E. F. G. H. I. J. K. L. M. N. O. P. Q. R. S. T. U. V. W. X. Y. Z.",
+      "tip": "Écoute par petits groupes et fais une pause entre eux.",
+      "alphabetAnswer": "abcdefghijklmnopqrstuvwxyz",
+      "fullAlphabet": true
+    }
+  ],
+  "intro": [
+    {
+      "text": "Ich heiße Lena.",
+      "meaning": "Je m’appelle Lena."
+    },
+    {
+      "text": "Woher kommst du?",
+      "meaning": "D’où viens-tu ?"
+    }
+  ],
+  "greetings": [
+    {
+      "text": "Guten Morgen! Wie geht es dir?",
+      "meaning": "Bonjour ! Comment vas-tu ?"
+    },
+    {
+      "text": "Danke, mir geht es gut.",
+      "meaning": "Merci, je vais bien."
+    }
+  ],
+  "jobs": [
+    {
+      "text": "Ich arbeite als Lehrer.",
+      "meaning": "Je travaille comme professeur."
+    },
+    {
+      "text": "Ich bin vierundzwanzig Jahre alt.",
+      "meaning": "J’ai vingt-quatre ans."
+    }
+  ],
+  "family": [
+    {
+      "text": "Das ist meine Schwester.",
+      "meaning": "C’est ma sœur."
+    },
+    {
+      "text": "Hast du Geschwister?",
+      "meaning": "As-tu des frères et sœurs ?"
+    }
+  ],
+  "furniture": [
+    {
+      "text": "Wie viel kostet der Tisch?",
+      "meaning": "Combien coûte la table ?"
+    },
+    {
+      "text": "Der Stuhl kostet dreißig Euro.",
+      "meaning": "La chaise coûte trente euros."
+    }
+  ],
+  "articles": [
+    {
+      "text": "Das ist ein Stuhl.",
+      "meaning": "C’est une chaise."
+    },
+    {
+      "text": "Nein, das ist kein Stuhl.",
+      "meaning": "Non, ce n’est pas une chaise."
+    }
+  ],
+  "objects": [
+    {
+      "text": "Die Tasche ist blau.",
+      "meaning": "Le sac est bleu."
+    },
+    {
+      "text": "Der Stift ist klein und leicht.",
+      "meaning": "Le stylo est petit et léger."
+    }
+  ],
+  "office": [
+    {
+      "text": "Ich brauche einen Computer.",
+      "meaning": "J’ai besoin d’un ordinateur."
+    },
+    {
+      "text": "Hast du einen Drucker?",
+      "meaning": "As-tu une imprimante ?"
+    }
+  ],
+  "hobbies": [
+    {
+      "text": "Ich kann gut schwimmen.",
+      "meaning": "Je sais bien nager."
+    },
+    {
+      "text": "Was machst du gern?",
+      "meaning": "Qu’aimes-tu faire ?"
+    }
+  ],
+  "time": [
+    {
+      "text": "Hast du am Dienstag Zeit?",
+      "meaning": "As-tu le temps mardi ?"
+    },
+    {
+      "text": "Wir treffen uns um halb acht.",
+      "meaning": "On se retrouve à sept heures et demie."
+    }
+  ],
+  "food": [
+    {
+      "text": "Ich esse gern Brot mit Käse.",
+      "meaning": "J’aime manger du pain avec du fromage."
+    },
+    {
+      "text": "Was möchtest du trinken?",
+      "meaning": "Que veux-tu boire ?"
+    }
+  ],
+  "transport": [
+    {
+      "text": "Wann fährt der Zug ab?",
+      "meaning": "Quand part le train ?"
+    },
+    {
+      "text": "Ich steige am Bahnhof aus.",
+      "meaning": "Je descends à la gare."
+    }
+  ],
+  "past": [
+    {
+      "text": "Gestern habe ich Deutsch gelernt.",
+      "meaning": "Hier, j’ai étudié l’allemand."
+    },
+    {
+      "text": "Am Abend habe ich gekocht.",
+      "meaning": "Le soir, j’ai cuisiné."
+    }
+  ],
+  "directions": [
+    {
+      "text": "Gehen Sie geradeaus und dann nach links.",
+      "meaning": "Allez tout droit puis à gauche."
+    },
+    {
+      "text": "Wo ist der nächste Bahnhof?",
+      "meaning": "Où se trouve la gare la plus proche ?"
+    }
+  ],
+  "home": [
+    {
+      "text": "Meine Wohnung hat zwei Zimmer.",
+      "meaning": "Mon appartement a deux pièces."
+    },
+    {
+      "text": "Die Küche ist neben dem Wohnzimmer.",
+      "meaning": "La cuisine est à côté du salon."
+    }
+  ],
+  "appointments": [
+    {
+      "text": "Können wir den Termin verschieben?",
+      "meaning": "Pouvons-nous déplacer le rendez-vous ?"
+    },
+    {
+      "text": "Am Donnerstag habe ich noch Zeit.",
+      "meaning": "Jeudi, je suis encore disponible."
+    }
+  ],
+  "health": [
+    {
+      "text": "Ich habe seit gestern Kopfschmerzen.",
+      "meaning": "J’ai mal à la tête depuis hier."
+    },
+    {
+      "text": "Mein rechtes Bein tut weh.",
+      "meaning": "J’ai mal à la jambe droite."
+    }
+  ],
+  "chores": [
+    {
+      "text": "Heute muss ich die Küche putzen.",
+      "meaning": "Aujourd’hui je dois nettoyer la cuisine."
+    },
+    {
+      "text": "Kannst du bitte einkaufen?",
+      "meaning": "Peux-tu faire les courses, s’il te plaît ?"
+    }
+  ],
+  "rules": [
+    {
+      "text": "Hier darf man nicht rauchen.",
+      "meaning": "Il est interdit de fumer ici."
+    },
+    {
+      "text": "Wir müssen leise sein.",
+      "meaning": "Nous devons faire peu de bruit."
+    }
+  ],
+  "weather": [
+    {
+      "text": "Es regnet und ich brauche eine Jacke.",
+      "meaning": "Il pleut et j’ai besoin d’une veste."
+    },
+    {
+      "text": "Morgen scheint die Sonne.",
+      "meaning": "Demain, il y aura du soleil."
+    }
+  ],
+  "celebrate": [
+    {
+      "text": "Mein Geburtstag ist am dritten Mai.",
+      "meaning": "Mon anniversaire est le trois mai."
+    },
+    {
+      "text": "Was schenkst du deiner Schwester?",
+      "meaning": "Qu’offres-tu à ta sœur ?"
+    }
+  ],
+  "a2family": [
+    {
+      "text": "Früher haben wir oft bei Oma gegessen.",
+      "meaning": "Avant, on mangeait souvent chez mamie."
+    },
+    {
+      "text": "Mein Opa hat mir Geschichten erzählt.",
+      "meaning": "Mon grand-père me racontait des histoires."
+    }
+  ],
+  "a2position": [
+    {
+      "text": "Stell die Lampe neben das Sofa.",
+      "meaning": "Place la lampe à côté du canapé."
+    },
+    {
+      "text": "Die Lampe steht neben dem Sofa.",
+      "meaning": "La lampe se trouve à côté du canapé."
+    }
+  ],
+  "future": [
+    {
+      "text": "Nächstes Jahr werde ich nach Berlin ziehen.",
+      "meaning": "L’an prochain, je déménagerai à Berlin."
+    },
+    {
+      "text": "Was wirst du am Wochenende machen?",
+      "meaning": "Que feras-tu ce week-end ?"
+    }
+  ],
+  "appearance": [
+    {
+      "text": "Er hat kurze Haare und trägt eine Brille.",
+      "meaning": "Il a les cheveux courts et porte des lunettes."
+    },
+    {
+      "text": "Sie ist freundlich und hat braune Augen.",
+      "meaning": "Elle est sympathique et a les yeux marron."
+    }
+  ]
+}

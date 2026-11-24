@@ -6,7 +6,9 @@ function classroomLessonHTML(l){
   if(!l)return '<p class="empty">Cette leçon n’existe pas.</p>';
   if(route.tab==='practice'){
     if(!quiz||quiz.lesson!==l.id)startQuiz(l.id,false);
-    return `<button class="back" data-tab="watch">${icon('back')}Revenir au cours et au PDF</button><div class="quiz-shell">${notionTabs(l)}<div id="quiz-area">${quizHTML()}</div></div>`;
+    return `<div class="practice-heading"><button class="back" data-tab="watch">${icon('back')} Cours et PDF</button><span>Niveau ${l.level}</span></div>
+      <div class="quiz-shell"><header class="practice-title"><span class="practice-symbol">${icon('mic')}</span><div><h1>Atelier de pratique</h1><p>${esc(l.title)}</p></div></header>
+      ${(l.topics||[l.topic]).length > 1 ? notionTabs(l) : ''}<div id="quiz-area">${quizHTML()}</div></div>`;
   }
   if (pdfSyncLesson !== l.id) {
     pdfSyncLesson = l.id;
@@ -18,8 +20,8 @@ function classroomLessonHTML(l){
   const split = percentSplit(state.studySplit);
   return `<div class="classroom-heading">
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
-    <div><small>${l.level} · ÉTAPE ${l.number}</small><h1 title="${esc(l.title)}">${esc(l.title)}</h1></div>
-    <button class="secondary" data-tab="practice">${icon('star')} Mini-quiz</button>
+    <div><small>Niveau ${l.level} · Leçon ${l.number}</small><h1>${esc(l.title)}</h1></div>
+    <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Pratiquer à l’oral</button>
     ${p.watch && p.read && p.practice ? `<button class="primary" data-complete="${l.id}">${p.completed ? 'Mon parcours' : 'Terminer la leçon'}</button>` : ''}
   </div>
   <div class="classroom-layout split-classroom" style="--study-split:${split}%">
@@ -27,15 +29,15 @@ function classroomLessonHTML(l){
     <div class="study-divider" role="separator" aria-label="Ajuster la largeur du PDF" aria-orientation="vertical" aria-controls="study-document" aria-valuemin="35" aria-valuemax="65" aria-valuenow="${split}" tabindex="0"></div>
     <aside class="classroom-coach">
       <section class="classroom-video" aria-label="Ton enregistrement">
-        <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Ton enregistrement</h2>
+        <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Enregistrement du cours</h2>
         ${mediaHTML(l)}
         <div class="classroom-video-actions">
-          <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Marquer l’écoute terminée'}</button>
-          <button class="link-button" data-toggle-exercises>${icon('book')} Répondre</button>
-          <button class="link-button" data-toggle-extras aria-label="Notes et choix de voix">${icon('headphones')} Voix</button>
+          <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
+          <button class="link-button" data-jump-exercises>${icon('book')} Exercices du PDF</button>
+          <button class="link-button" data-toggle-extras>${icon('headphones')} Notes et voix</button>
         </div>
       </section>
-      <section class="classroom-answers" id="classroom-answers" aria-label="Réponses et correction">${exercisePanelHTML(l)}</section>
+      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${exercisePanelHTML(l)}</section>
       <details class="classroom-extras"><summary>Notes et prononciation</summary>
         <textarea class="note-area" id="lesson-notes" aria-label="Mes notes" placeholder="Une règle à retenir…">${esc(state.notes[l.id]||'')}</textarea>
         ${audioHTML(l.topic)}
@@ -51,7 +53,7 @@ function classroomBookHTML(bid){
 }
 
 function fullPDFPageHTML(b,p){
-  return `<div class="pdf-tools"><span>Clique sur un mot pour le traduire et l’écouter.</span><form id="pdf-word-search"><input name="word" maxlength="64" aria-label="Un mot à traduire" placeholder="Un mot allemand…"><button aria-label="Traduire ce mot">${icon('search')}</button></form></div><div class="pdf-stage" id="pdf-stage"><div class="pdf-paper" id="pdf-paper" data-book="${b.id}" data-page="${p.page}" style="width:${readerZoom()*100}%"><img class="pdf-page-image" src="${p.image}" alt="${esc(b.title)}, page ${p.printed||p.page}" draggable="false"><div class="pdf-text-layer" id="pdf-text-layer" lang="de" aria-label="Texte sélectionnable de la page"></div><div class="pdf-exercise-focus" id="pdf-exercise-focus" hidden></div></div></div>`;
+  return `<div class="pdf-tools"><span>Clique sur un mot pour le traduire.</span><form id="pdf-word-search"><input name="word" maxlength="64" aria-label="Un mot à traduire" placeholder="Traduire un mot…"><button aria-label="Traduire ce mot">${icon('search')}</button></form></div><div class="pdf-stage" id="pdf-stage"><div class="pdf-paper" id="pdf-paper" data-book="${b.id}" data-page="${p.page}" style="width:${readerZoom()*100}%"><img class="pdf-page-image" src="${p.image}" alt="${esc(b.title)}, page ${p.printed||p.page}" draggable="false"><div class="pdf-text-layer" id="pdf-text-layer" lang="de" aria-label="Texte sélectionnable de la page"></div><div class="pdf-exercise-focus" id="pdf-exercise-focus" hidden></div></div></div>`;
 }
 
 function solutionFor(b,t){
@@ -252,7 +254,19 @@ document.addEventListener('click',e=>{
   const grammar=e.target.closest('[data-grammar-key]');if(grammar){const key=grammar.dataset.grammarKey;document.querySelector(`[data-grammar-result="${key}"]`).innerHTML=grammarHTML(state.answers[key]||'');}
   const key=e.target.closest('[data-guided-letter]');if(key){const body=key.closest('.guided-task-body'),field=lastGuidedField&&body.contains(lastGuidedField)?lastGuidedField:body.querySelector('[data-guided-answer]');if(field){const a=field.selectionStart,b=field.selectionEnd;field.setRangeText(key.dataset.guidedLetter,a,b,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));}}
   if(e.target.closest('[data-toggle-exercises]'))document.body.classList.toggle('answers-open');
-  if(e.target.closest('[data-toggle-extras]')){const extras=document.querySelector('.classroom-extras');if(extras){extras.open=!extras.open;document.body.classList.toggle('extras-open',extras.open);}}
+  if(e.target.closest('[data-jump-exercises]')){
+    const answers=document.getElementById('classroom-answers');
+    answers.focus({preventScroll:true});
+    answers.scrollIntoView({block:'start'});
+  }
+  if(e.target.closest('[data-toggle-extras]')){
+    const extras=document.querySelector('.classroom-extras');
+    if(extras){
+      extras.open=true;
+      extras.querySelector('summary').focus({preventScroll:true});
+      extras.scrollIntoView({block:'start'});
+    }
+  }
 });
 document.addEventListener('change',e=>{if(e.target.id==='reader-page')holdCurrentPDFCue();});
 document.addEventListener('focusin',e=>{if(e.target.matches('[data-guided-answer]'))lastGuidedField=e.target;});
