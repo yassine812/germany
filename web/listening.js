@@ -74,6 +74,9 @@ function keepListeningWordVisible(scroller, word) {
   if (target.top < bounds.top+5 || target.bottom > bounds.bottom-5) {
     scroller.scrollTop += (target.top+target.bottom-bounds.top-bounds.bottom)/2;
   }
+  if (target.left < bounds.left+5 || target.right > bounds.right-5) {
+    scroller.scrollLeft += (target.left+target.right-bounds.left-bounds.right)/2;
+  }
 }
 
 function bindListeningTranscript(audio) {
@@ -147,4 +150,7 @@ function bindListeningTranscript(audio) {
   for (const event of ['seeking','seeked','pause','ended']) {
     audio.addEventListener(event,update);
   }
+  details.addEventListener('toggle',() => {
+    if (details.open && labels[index]) keepListeningWordVisible(transcript,labels[index]);
+  });
 }
