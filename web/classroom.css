@@ -33,7 +33,7 @@
 .pdf-text-layer{position:absolute;inset:0;pointer-events:none;user-select:text;overflow:hidden}
 .pdf-word{position:absolute;color:transparent;white-space:pre;line-height:1;font-family:Arial,sans-serif;pointer-events:auto;cursor:text;user-select:text;overflow:visible;border-radius:2px}
 .pdf-word:hover,.pdf-word.is-word-anchored{background:#74ce5533;outline:1px solid #74ce5577}
-.pdf-word.is-listening-word {background:#ffcb526b;outline:2px solid #bb7109}
+.pdf-word.is-listening-word,.pdf-word.is-lesson-reading-word {background:#ffcb526b;outline:2px solid #bb7109}
 .pdf-word::selection{background:#55b73655;color:transparent}
 .pdf-exercise-focus{position:absolute;pointer-events:none;border:3px solid #55b830;background:#82ce3a0b;box-shadow:0 0 0 20000px #1b35130d;border-radius:6px;transition:top .2s,height .2s}
 .classroom-coach{display:flex;flex-direction:column;border:1px solid #dce5d5;border-radius:14px;overflow:hidden;background:white}

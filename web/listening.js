@@ -1,6 +1,7 @@
 'use strict';
 
 const listeningBooks = new Map();
+const lessonReadings = new Map();
 
 async function listeningLines(track) {
   const book = /^(a\d\d-(?:kb|ab))-[a-f0-9]+$/u.exec(track)?.[1];
@@ -76,6 +77,57 @@ function keepListeningWordVisible(scroller, word) {
   if (target.left < bounds.left+5 || target.right > bounds.right-5) {
     scroller.scrollLeft += (target.left+target.right-bounds.left-bounds.right)/2;
   }
+}
+
+function lessonReadingWords(l) {
+  if (!lessonReadings.has(l.session)) {
+    const url = `assets/audio/lesson-reading/${l.session}.json?v=${window.DEUTSCHWEG_BUILD || '1'}`;
+    const request = fetch(url).then(response => response.ok ? response.json() : {})
+      .catch(() => { lessonReadings.delete(l.session); return {}; });
+    lessonReadings.set(l.session,request);
+  }
+  return lessonReadings.get(l.session).then(files => files[l.file] || []);
+}
+
+function lessonReadingWord(words, time, layer) {
+  const cue = words[listeningWordAt(words,time)];
+  if (!cue || !layer || cue[2] !== layer.dataset.pageKey) return null;
+  const word = layer.children[cue[3]];
+  return word && listeningWordKey(word.dataset.pdfWord) === cue[4] ? word : null;
+}
+
+function bindLessonReading(media, l) {
+  if (!l.file || !/^A[12]\.[12]-s\d+$/u.test(l.session)) return;
+  const reading = lessonReadingWords(l);
+  let words = [], highlighted = null, frame = 0;
+
+  function update() {
+    const layer = $('#pdf-text-layer');
+    const next = media.isConnected && !media.paused && !media.seeking && !media.ended
+      ? lessonReadingWord(words,media.currentTime*1000,layer) : null;
+    if (next === highlighted) return;
+    highlighted?.classList.remove('is-lesson-reading-word');
+    highlighted = next;
+    if (!next) return;
+    next.classList.add('is-lesson-reading-word');
+    if (pdfHeldCue === null && route.tab !== 'exercise' && !wordInteractionOpen() &&
+        !document.activeElement?.matches('input:not([data-clip-position]),textarea,select')) {
+      keepListeningWordVisible($('#pdf-stage'),next);
+    }
+  }
+
+  function follow() {
+    update();
+    if (media.isConnected && !media.paused && !media.ended) frame = requestAnimationFrame(follow);
+  }
+
+  media.addEventListener('play',async () => {
+    words = await reading;
+    if (!words.length || !media.isConnected) return;
+    cancelAnimationFrame(frame);
+    follow();
+  });
+  for (const event of ['seeking','pause','ended','emptied']) media.addEventListener(event,update);
 }
 
 function bindListeningTranscript(audio) {

@@ -133,6 +133,7 @@ function bindMedia() {
   const v = $('#recording');
   v.preservesPitch = true;
   v.playbackRate = Number($('#recording-speed').value);
+  bindLessonReading(v,l);
   if (bounded) bindBoundedControls(card,v,start);
   let finished = false;
   const updatePosition = () => {

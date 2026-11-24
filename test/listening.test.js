@@ -4,8 +4,8 @@ import {test} from 'node:test';
 import {runInNewContext} from 'node:vm';
 
 const source = await readFile(new URL('../web/listening.js',import.meta.url),'utf8');
-const {listeningWordAt,matchListeningWords} = runInNewContext(
-  source+'\n;({listeningWordAt,matchListeningWords})'
+const {listeningWordAt,matchListeningWords,lessonReadingWord} = runInNewContext(
+  source+'\n;({listeningWordAt,matchListeningWords,lessonReadingWord})'
 );
 
 test('tracks original audio time across seeks and silent gaps', () => {
@@ -36,4 +36,17 @@ test('matches a printed vocabulary list read with pauses between words', () => {
   }));
   const words = [[3000,3700,'Grüße.'],[9000,9750,'Schlüssel.'],[15000,15600,'Stühle.']];
   assert.equal(matchListeningWords(words,pdf).get(1),pdf[2]);
+});
+
+test('uses the timed PDF word only on its matching page and text layer', () => {
+  const words = [[500,700,'notes:2',1,'büro']];
+  const target = {dataset:{pdfWord:'Büro.'}};
+  const layer = {dataset:{pageKey:'notes:2'},children:[{},target]};
+  assert.equal(lessonReadingWord(words,650,layer),target);
+  assert.equal(lessonReadingWord(words,700,layer),null);
+  layer.dataset.pageKey = 'notes:3';
+  assert.equal(lessonReadingWord(words,650,layer),null);
+  layer.dataset.pageKey = 'notes:2';
+  target.dataset.pdfWord = 'Stühle';
+  assert.equal(lessonReadingWord(words,650,layer),null);
 });
