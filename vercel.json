@@ -12,6 +12,7 @@
     { "source": "/assets/books/:book/:page", "destination": "/api/course?key=assets/books/:book/:page" },
     { "source": "/assets/text/:book/:page", "destination": "/api/course?key=assets/text/:book/:page" },
     { "source": "/assets/book-audio/:file", "destination": "/api/course?key=assets/book-audio/:file" },
+    { "source": "/assets/audio/:group/:file", "destination": "/api/course?key=assets/audio/:group/:file" },
     { "source": "/assets/audio/:file", "destination": "/api/course?key=assets/audio/:file" },
     { "source": "/assets/words/:file", "destination": "/api/course?key=assets/words/:file" },
     { "source": "/assets/dictionary/:file", "destination": "/api/course?key=assets/dictionary/:file" }
