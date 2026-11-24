@@ -17,105 +17,109 @@ function levelLabel(level) {
 }
 
 function recordingJourneyHTML() {
-  const {level} = state;
-  const all = [...recordingsBySession.values()].filter(recording => recording.level === level);
-  const remaining = all.filter(recording => !groupDone(recording));
-  const remembered = state.journeyNext?.[level];
-  const savedNext = groupsByClip.get(remembered)?.session || remembered;
-  const current = remaining.find(recording => recording.id === savedNext) || remaining[0] || all.at(-1);
-  if (!current) return `<div class="journey-header"><h1>Mon parcours</h1>${journeyLevels()}</div>`;
-  const completed = all.length - remaining.length;
-  const finished = !remaining.length;
-  const nextLevel = levels[levels.indexOf(level) + 1];
-  const label = levelLabel(level);
-  const assessment = assessments[level];
-  const answered = assessment ? Object.values(assessmentProgress(level).pages).filter(Boolean).length : 0;
-  const assessed = !assessment || answered === assessment.pages.length;
-  const assessmentUrl = '#assessment/' + level;
+  const recordings = [...recordingsBySession.values()];
+  const zones = levels.map(level => ({level, stops:journeyStops(level, recordings)}));
+  const stops = zones.flatMap(zone => zone.stops);
+  const remembered = state.journeyNext?.[state.level];
+  const resumeId = groupsByClip.get(remembered)?.session || remembered;
+  const current = stops.find(stop => stop.id === foxJourney?.to)
+    || stops.find(stop => stop.id === resumeId && !stop.complete)
+    || stops.find(stop => stop.recording?.level === state.level && stop.started && !stop.complete)
+    || stops.find(stop => (stop.recording || stop.assessment) && !stop.complete)
+    || stops.at(-1);
+  return `<div class="journey-header">
+    <h1>Mon parcours</h1>
+    ${current ? `<button class="journey-locate" data-journey-locate>${icon('path')} Ma position</button>` : ''}
+  </div>
+  <nav class="journey-shortcuts" aria-label="Accès aux niveaux">
+    ${levels.map(level => `<a data-world="${level}" href="#path/${level}">${level===preparationLevel ? levelLabel(level) : level}</a>`).join('')}
+  </nav>
+  <div class="journey-grid">
+    <details class="journey-daily">
+      <summary>${icon('flame')} Objectif du jour</summary>
+      ${dailyPanel()}
+    </details>
+    <div class="journey-trail" aria-label="Parcours complet d’allemand">
+      ${zones.map(({level, stops}, index) => journeyZone(level, stops, index, current)).join('')}
+    </div>
+  </div>`;
+}
+
+function journeyStops(level, recordings) {
+  const lessons = recordings.filter(recording => recording.level === level);
+  const stops = lessons.map(recording => {
+    const done = recording.chapters.filter(groupDone).length;
+    const complete = done === recording.chapters.length;
+    const {position:started} = groupProgress(recording);
+    return {id:recording.id, recording, title:recording.title, complete, started,
+      subtitle:`${done} / ${recording.chapters.length} chapitres`,
+      symbol:recording.kind === 'audio' ? 'headphones' : 'play', clip:groupStart(recording).id};
+  });
   const notes = level === preparationLevel ? book('notes') : null;
-  return `<div class="journey-header"><h1>Mon parcours</h1><a class="roadmap-library secondary" href="#library">${icon('book')} Bibliothèque</a></div>
-    ${journeyLevels()}
-    <div class="journey-grid"><section class="journey-trail" aria-label="Parcours ${label}">
-      <header class="journey-current">
-        <img src="assets/journey.svg" alt="">
-        <div><span class="world-kicker">${label}</span><h2>${levelNames[level]}</h2>
-        <p>${completed} / ${all.length} séances terminées</p>
-        <div class="world-supports" aria-label="Dans une séance">${icon('play')} Cours ${icon('book')} PDF ${icon('mic')} Oral</div>
-        ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${level}</a>` :
-          finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
-        <button class="primary" data-start="${groupStart(current).id}">${icon('play')} ${finished ? 'Revoir la dernière séance' : groupProgress(current).position ? 'Reprendre ma séance' : 'Commencer ma séance'}</button>
-        <p class="world-next">${esc(current.title)} · ${current.chapters.length} chapitres</p>`}</div>
-      </header>
-      ${notes ? `<div class="level-boundary preparation-pdf">
-        <span class="boundary-icon">${icon('book')}</span>
-        <div><strong>Préparation · PDF</strong><span>${notes.pages.length} pages</span></div>
-        <a class="secondary" href="#book/${notes.id}/1/reference">Feuilleter le PDF</a>
-      </div>` : `<div class="level-boundary">
-        <span class="boundary-icon">${icon('play')}</span>
-        <div><strong>Début du niveau ${level}</strong></div>
-        <button class="secondary jump-finish" data-jump-finish>Voir la fin</button>
-      </div>`}
-      ${journeyTrail(all, current)}
-      ${assessment ? `<section class="level-boundary level-assessment" aria-label="Bilan de fin de niveau">
-        <span class="boundary-icon">${icon('book')}</span><div><strong>Bilan de fin de niveau ${level}</strong>
-        <span>${assessment.exercises ? 'Tests du cahier Menschen' : 'Ton PDF Test A1.1'} · ${answered} / ${assessment.pages.length} pages validées</span></div>
-        <a class="secondary" href="${assessmentUrl}${assessed ? '/result' : ''}">${assessed ? 'Voir mon bilan' : answered ? 'Reprendre le bilan' : 'Ouvrir le bilan'}</a>
-      </section>` : ''}
-      <footer class="level-boundary level-finish" id="level-finish" tabindex="-1">
-        <span class="boundary-icon">${icon('trophy')}</span>
-        <div><strong>${level===preparationLevel ? 'Fin de la préparation' : (finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau ')+level}</strong></div>
-        ${nextLevel && assessed ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
-      </footer>
-    </section><aside class="journey-rail">${dailyPanel()}</aside></div>`;
+  if (notes) {
+    stops.unshift({id:'preparation-pdf', title:'PDF de préparation', subtitle:`${notes.pages.length} pages`,
+      symbol:'book', href:`#book/${notes.id}/1/reference`});
+  }
+  const assessment = assessments[level];
+  if (assessment) {
+    const answered = Object.values(assessmentProgress(level).pages).filter(Boolean).length;
+    const complete = answered === assessment.pages.length;
+    stops.push({id:'bilan-'+level, assessment:true, title:'Bilan '+level, complete,
+      subtitle:`Fin du niveau · ${answered} / ${assessment.pages.length} pages`,
+      symbol:'trophy', href:`#assessment/${level}${complete ? '/result' : ''}`});
+  }
+  return stops;
 }
 
 function lessonMinutes(l) {
   return Math.max(1, Math.ceil(l.effectiveDuration / 60));
 }
 
-function journeyTrail(lessons, current) {
-  const firstUnfinished = lessons.findIndex(l => !groupDone(l));
-  const trailProgress = firstUnfinished < 0 ? 100 : 100 * firstUnfinished / Math.max(1, lessons.length - 1);
-  const height = lessons.length * 104 + 16;
-  const points = lessons.map((_, i) => [50 + Math.sin(i * 1.4) * 9, i * 104 + 60]);
-  const line = points.map(([x,y],i) => {
+function journeyZone(level, stops, index, current) {
+  const stepGap = 108;
+  const height = (stops.length + 1) * stepGap;
+  const positions = stops.map((_, i) => [50 + 9 * Math.sin((i + 1) * 1.47), (i + 1) * stepGap + 42]);
+  const points = [[50,0], [50,42], ...positions, [50,height]];
+  const path = points.map(([x,y], i) => {
     if (!i) return `M ${x*6} ${y}`;
-    const [previousX, previousY] = points[i-1];
-    return `C ${previousX*6} ${previousY+50} ${x*6} ${y-50} ${x*6} ${y}`;
+    const [prevX,prevY] = points[i-1];
+    const mid = (prevY+y)/2;
+    return `C ${prevX*6} ${mid} ${x*6} ${mid} ${x*6} ${y}`;
   }).join(' ');
-  return `<section class="journey-chapter" aria-label="Séances du niveau">
-    <div class="chapter-road" style="height:${height}px"><svg class="road-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true">
-    <path class="road-ahead" d="${line}"/><path class="road-done" pathLength="100" style="--travelled:${trailProgress}" d="${line}"/></svg>
-    ${lessons.map((l, i) => {
-      const next = l.id === (foxJourney?.to || current.id);
-      const completed = groupDone(l);
-      const start = groupStart(l).id;
-      const chaptersDone = l.chapters.filter(groupDone).length;
-      return `<div id="map-${l.id}" class="map-step ${i%2 ? 'label-right' : 'label-left'} ${next ? 'is-current' : ''} ${completed ? 'is-complete' : ''}" style="--stop-x:${points[i][0]}%;top:${i*104+29}px">
-        ${next ? '<img class="journey-mascot" src="assets/fox.svg" alt="Ta position sur la carte">' : ''}
-        <button class="map-orbit" data-start="${start}" aria-label="${esc(l.title)}${completed ? ' · terminée' : ''}">${icon(completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
-        <button class="map-step-label" data-start="${start}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${chaptersDone} / ${l.chapters.length} chapitres</span></button>
-      </div>`;
-    }).join('')}</div>
+  const firstNew = stops.findIndex(stop => (stop.recording || stop.assessment) && !stop.complete);
+  const travelled = firstNew < 0 ? 100 : 100 * (firstNew + .46) / (stops.length + 1);
+  const heading = 'journey-'+level;
+  return `<section class="journey-zone" id="${heading}" aria-labelledby="${heading}-title" data-world="${level}" style="--zone-height:${height}px">
+    <svg class="journey-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true">
+      <path class="journey-line-bed" d="${path}"/>
+      <path class="journey-line-dots" d="${path}"/>
+      <path class="journey-line-progress" pathLength="100" style="--travelled:${travelled}" d="${path}"/>
+    </svg>
+    <header class="journey-marker" style="--stop-x:50%;top:42px">
+      <span class="journey-marker-icon">${icon(levelIcons[index])}</span>
+      <div class="journey-step-copy">
+        <h2 id="${heading}-title">${levelLabel(level)}</h2><p>${levelNames[level]}</p>
+      </div>
+    </header>
+    ${stops.map((stop,i) => journeyStep(stop, positions[i], i, stop === current)).join('')}
   </section>`;
 }
 
-function journeyLevels() {
-  return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map((level, index) => {
-    const lessons = [...recordingsBySession.values()].filter(l => l.level === level);
-    const done = lessons.filter(groupDone).length;
-    return `<a class="world-card" data-world="${level}" href="#path/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
-      <span class="world-card-icon">${icon(levelIcons[index])}</span>
-      <span class="world-card-body"><strong>${levelLabel(level)}</strong><span>${levelNames[level]}</span>
-      <progress value="${done}" max="${lessons.length || 1}" aria-label="Progression ${level}"></progress>
-      <small>${done} / ${lessons.length} séances</small></span>
-    </a>`;
-  }).join('')}</nav>`;
+function journeyStep(stop, [x,y], index, current) {
+  const label = `<span class="journey-pin">${icon(stop.complete ? 'check' : stop.symbol)}</span>
+    <span class="journey-step-copy"><strong>${esc(stop.title)}</strong><small>${esc(stop.subtitle)}</small></span>`;
+  const linkState = current ? ' aria-current="step"' : '';
+  return `<div class="map-step ${index%2 ? 'label-right' : 'label-left'} ${stop.complete ? 'is-complete' : ''} ${current ? 'is-current' : ''}"
+      id="map-${stop.id}" style="--stop-x:${x}%;top:${y}px">
+    ${current ? '<img class="journey-mascot" src="assets/fox.svg" alt="Ta position sur le parcours">' : ''}
+    ${stop.href ? `<a class="journey-step" href="${stop.href}"${linkState}>${label}</a>` :
+      `<button class="journey-step" type="button" data-start="${stop.clip}"${linkState}>${label}</button>`}
+  </div>`;
 }
 
 function dailyPanel() {
   return `<section class="daily-card" aria-label="Suivi quotidien">
-    <div class="daily-title"><span class="daily-icon">${icon('flame')}</span><div><h2>Objectif du jour</h2><p data-daily-streak></p></div></div>
+    <p data-daily-streak></p>
     <div id="daily-week">${week()}</div>
     <progress id="daily-minutes" max="${state.goal * 60}" value="${state.days[today()]?.seconds || 0}" aria-label="Minutes étudiées aujourd’hui"></progress>
     <p id="daily-label">${Math.floor((state.days[today()]?.seconds || 0) / 60)} / ${state.goal} min aujourd’hui</p>
@@ -169,7 +173,13 @@ function animateJourney() {
     },{threshold:.12});
     $$('.map-step').forEach(step => mapObserver.observe(step));
   }
-  if (route.page !== 'path' || !foxJourney) return;
+  if (route.page !== 'path') return;
+  if (!foxJourney) {
+    if (levels.includes(route.id)) requestAnimationFrame(() => {
+      document.getElementById('journey-'+route.id)?.scrollIntoView({block:'start'});
+    });
+    return;
+  }
   const move = foxJourney;
   foxJourney = null;
   requestAnimationFrame(() => {
@@ -194,10 +204,15 @@ function animateJourney() {
 }
 
 document.addEventListener('click', event => {
-  if (event.target.closest('[data-jump-finish]')) {
-    const end = document.getElementById('level-finish');
-    end.focus({preventScroll:true});
-    end.scrollIntoView({block:'center'});
+  const shortcut = event.target.closest('.journey-shortcuts a');
+  if (shortcut?.getAttribute('href') === location.hash) {
+    event.preventDefault();
+    document.getElementById('journey-'+route.id)?.scrollIntoView({block:'start'});
+  }
+  if (event.target.closest('[data-journey-locate]')) {
+    const current = $('.map-step.is-current .journey-step');
+    current?.focus({preventScroll:true});
+    current?.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
   }
   const button = event.target.closest('[data-finish-page]');
   if (!button || route.page !== 'book') return;
