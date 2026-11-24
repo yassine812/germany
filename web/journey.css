@@ -169,3 +169,25 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
   .level-boundary .secondary {font-size:.8rem;padding-inline:7px}
   .level-boundary strong {font-size:.94rem}
 }
+
+.roadmap-library {background:#eee1fa;border-color:#d7bce9;color:#44265f}
+.world-supports {display:flex;align-items:center;gap:5px 8px;flex-wrap:wrap;margin:7px 0;color:var(--world-bright);font-size:.875rem;font-weight:800}
+.world-supports .icon {width:17px;height:17px}
+.journey-chapter .road-line .road-done {
+  stroke:var(--world);opacity:.66;stroke-width:7;stroke-dasharray:var(--travelled) 100;stroke-linecap:round
+}
+.journey-chapter .map-step {height:60px;width:1px}
+@media (prefers-reduced-motion:no-preference) {
+  .map-chapter[open] .road-ahead {animation:road-markers 3.8s linear infinite}
+  .journey-current img {animation:fox-float 4.8s ease-in-out infinite}
+  .journey-mascot {animation:fox-float 2.8s ease-in-out infinite}
+  .map-step.is-current .map-orbit {animation:step-pulse 2.7s ease-out infinite}
+  .map-step.step-arrived {animation:map-arrival .38s ease-out both}
+}
+@keyframes road-markers {to {stroke-dashoffset:-16}}
+@keyframes fox-float {50% {translate:0 -5px}}
+@keyframes step-pulse {
+  0%,100% {box-shadow:0 5px 0 var(--world-deep),0 0 0 5px var(--world-edge)}
+  55% {box-shadow:0 5px 0 var(--world-deep),0 0 0 11px transparent}
+}
+@keyframes map-arrival {from {opacity:.68;translate:0 7px} to {opacity:1;translate:0 0}}

@@ -33,11 +33,11 @@ function classroomLessonHTML(l){
         ${mediaHTML(l)}
         <div class="classroom-video-actions">
           <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
-          <button class="link-button" data-jump-exercises>${icon('book')} Exercices du PDF</button>
+          <button class="link-button" data-jump-exercises>${icon('book')} Lire et répondre</button>
           <button class="link-button" data-toggle-extras>${icon('headphones')} Notes et voix</button>
         </div>
       </section>
-      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${exercisePanelHTML(l)}</section>
+      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${lessonGuideHTML(l)}${exercisePanelHTML(l)}</section>
       <details class="classroom-extras"><summary>Notes et prononciation</summary>
         <textarea class="note-area" id="lesson-notes" aria-label="Mes notes" placeholder="Une règle à retenir…">${esc(state.notes[l.id]||'')}</textarea>
         ${audioHTML(l.topic)}
@@ -49,11 +49,14 @@ function classroomLessonHTML(l){
 function classroomBookHTML(bid){
   const b=book(bid);if(!b)return '<p class="empty">Livre introuvable.</p>';
   const paper=readerHTML(null,bid,Number(route.tab)||1);
-  return `<div class="classroom-heading"><a class="icon-btn" href="#books-path/${b.level}" aria-label="Retour au parcours des livres">${icon('back')}</a><div><small>${b.level} · MON LIVRE</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers">${exercisePanelHTML(null)}</section></aside></div>`;
+  return `<div class="classroom-heading"><a class="icon-btn" href="#library" aria-label="Retour à la bibliothèque">${icon('back')}</a><div><small>${b.level} · Document de référence</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers">${exercisePanelHTML(null)}</section></aside></div>`;
 }
 
 function fullPDFPageHTML(b,p){
-  return `<div class="pdf-tools"><span>Clique sur un mot pour le traduire.</span><form id="pdf-word-search"><input name="word" maxlength="64" aria-label="Un mot à traduire" placeholder="Traduire un mot…"><button aria-label="Traduire ce mot">${icon('search')}</button></form></div><div class="pdf-stage" id="pdf-stage"><div class="pdf-paper" id="pdf-paper" data-book="${b.id}" data-page="${p.page}" style="width:${readerZoom()*100}%"><img class="pdf-page-image" src="${p.image}" alt="${esc(b.title)}, page ${p.printed||p.page}" draggable="false"><div class="pdf-text-layer" id="pdf-text-layer" lang="de" aria-label="Texte sélectionnable de la page"></div><div class="pdf-exercise-focus" id="pdf-exercise-focus" hidden></div></div></div>`;
+  const linked = route.page === 'book' ? findPageLesson(b.id,p.page) : null;
+  const linkedButton = linked ? `<a class="pdf-course-link" href="${lessonPageURL(linked,b.id,p.page)}">${icon('play')} Étudier cette page avec le cours</a>` : '';
+
+  return `<div class="pdf-tools">${linkedButton || '<span>Survole un mot pour le traduire ou l’écouter.</span>'}<form id="pdf-word-search"><input name="word" maxlength="64" aria-label="Un mot à traduire" placeholder="Traduire un mot…"><button aria-label="Traduire ce mot">${icon('search')}</button></form></div><div class="pdf-stage ${paperView()==='page'?'fit-paper':''}" id="pdf-stage"><div class="pdf-paper" id="pdf-paper" data-book="${b.id}" data-page="${p.page}" style="--pdf-zoom:${readerZoom()}"><img class="pdf-page-image" src="${p.image}" alt="${esc(b.title)}, page ${p.printed||p.page}" draggable="false"><div class="pdf-text-layer" id="pdf-text-layer" lang="de" aria-label="Texte sélectionnable de la page"></div><div class="pdf-exercise-focus" id="pdf-exercise-focus" hidden></div></div></div>`;
 }
 
 function solutionFor(b,t,p=activePaper()){
@@ -139,13 +142,13 @@ function focusPDFExercise(id){
   focus.hidden=false;focus.style.cssText=`left:${(task.left||0)*100}%;top:${task.top*100}%;width:${((task.right??1)-(task.left??0))*100}%;height:${(task.bottom-task.top)*100}%`;
   stage.scrollTo({top:Math.max(0,task.top*paper.clientHeight-30),behavior:'smooth'});
 }
-function focusCourseRegion(cue) {
+function focusCourseRegion(cue,manual=false) {
   const paper = document.getElementById('pdf-paper');
   const stage = document.getElementById('pdf-stage');
   if (!paper || !stage) return;
   const image = paper.querySelector('img');
   const focus = () => {
-    if (!paper.isConnected || appliedPDFCue !== cue || pdfHeldCue !== null) return;
+    if (!paper.isConnected || (!manual && (appliedPDFCue !== cue || pdfHeldCue !== null))) return;
     if (cue.exercise) {
       focusPDFExercise(cue.exercise);
       const task = document.querySelector(`[data-guided-task="${cue.exercise}"]`);
@@ -206,10 +209,10 @@ function bindClassroom(){
   document.body.classList.remove('extras-open','answers-open');
   document.body.classList.toggle('in-classroom',(route.page==='lesson'&&route.tab!=='practice')||route.page==='book'||(route.page==='assessment'&&route.tab!=='result'));
   appliedPDFCue = null;
-  loadPDFWords();bindExerciseAudio();bindStudyDivider();
+  loadPDFWords();bindPaperAspect();bindExerciseAudio();bindStudyDivider();
   if(!document.getElementById('pdf-word-card')){const box=document.createElement('aside');box.id='pdf-word-card';box.className='word-card';box.hidden=true;box.setAttribute('aria-label','Traduction du mot');document.body.append(box);}
 }
-function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():exercisePanelHTML(lesson(route.id));if(route.page==='assessment')saveAssessmentPage(readerState.index);loadPDFWords();bindBookAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
+function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');const l=lesson(route.id);if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():(l?lessonGuideHTML(l):'')+exercisePanelHTML(l);if(route.page==='assessment')saveAssessmentPage(readerState.index);bindPaperAspect();loadPDFWords();bindBookAudio();bindExerciseAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
 function holdCurrentPDFCue() {
   const media = document.getElementById('recording');
   if (!media || route.page !== 'lesson') return;
@@ -217,18 +220,32 @@ function holdCurrentPDFCue() {
   const resume = $('[data-rejoin-course]');
   if (resume) resume.hidden = false;
 }
-function hideWordCard(){const card=document.getElementById('pdf-word-card');if(card)card.hidden=true;}
+function hideWordCard(){pdfLookupSequence++;pdfWordResult=null;hideWordActions();const card=document.getElementById('pdf-word-card');if(card)card.hidden=true;}
+const wordLookupCache=new Map();
 
-async function openPDFWord(raw,anchor=null){
-  const word=raw.replace(/^[^\p{L}]+|[^\p{L}]+$/gu,'').trim();if(!word||word.length>64)return;
+async function openPDFWord(raw,anchor=null,play=false){
+  const word=cleanPDFWord(raw);if(!word||word.length>64)return;
   const card=document.getElementById('pdf-word-card');if(!card)return;
-  document.getElementById('recording')?.pause();const sequence=++pdfLookupSequence;pdfWordResult=null;
+  hideWordActions();holdCurrentPDFCue();const sequence=++pdfLookupSequence;pdfWordResult=null;
   card.hidden=false;card.innerHTML=`<button class="word-close" data-close-word aria-label="Fermer">×</button><h2 lang="de">${esc(word)}</h2><p>Traduction, prononciation et exemple…</p>`;
+  card.style.removeProperty('left');card.style.removeProperty('top');
   if(anchor&&innerWidth>650){const r=anchor.getBoundingClientRect();card.style.left=Math.max(12,Math.min(innerWidth-405,r.left))+'px';card.style.top=Math.max(80,Math.min(innerHeight-430,r.bottom+8))+'px';}
   try{
-    const r=await fetch('/api/word?q='+encodeURIComponent(word));const result=await r.json();if(!r.ok)throw Error(result.error||'Traduction indisponible');if(sequence!==pdfLookupSequence)return;pdfWordResult=result;
+    let result=wordLookupCache.get(word);
+    if(!result){
+      const r=await fetch('/api/word?q='+encodeURIComponent(word));result=await r.json();
+      if(!r.ok)throw Error(result.error||'Traduction indisponible');
+      if(wordLookupCache.size>=250)wordLookupCache.delete(wordLookupCache.keys().next().value);
+      wordLookupCache.set(word,result);
+    }
+    if(sequence!==pdfLookupSequence)return;pdfWordResult=result;
     card.innerHTML=`<button class="word-close" data-close-word aria-label="Fermer">×</button><small>ALLEMAND · FRANÇAIS</small><h2 lang="de">${esc(result.word)}</h2>${result.lemma!==result.word?`<p class="word-lemma">Forme de ${esc(result.lemma)}</p>`:''}<p class="word-translation">${result.translations.slice(0,4).map(esc).join(' · ')}</p>${result.ipa?`<p class="word-ipa">[${esc(result.ipa)}]</p>`:''}<div class="word-buttons"><button class="primary" data-pronounce-word>${icon('volume')}${result.pronunciation?.text&&normalizedAnswer(result.pronunciation.text)!==normalizedAnswer(result.word)?'Écouter : '+esc(result.pronunciation.text):'Écouter le mot'}</button><button class="secondary" data-pronounce-word="slow">Plus lent</button></div>${result.examples.map(e=>`<div class="word-example"><strong>Dans une phrase</strong><p lang="de">${esc(e.de)}</p><p>${esc(e.fr)}</p><a href="${esc(e.url)}" target="_blank" rel="noopener">Tatoeba · ${esc(e.author||'contributeurs')} / ${esc(e.translationAuthor||'contributeurs')} · ${esc(e.license||'CC BY')}</a></div>`).join('')}${!result.examples.length?'<p class="word-example">Pas d’exemple trouvé pour cette forme. Essaie le mot de base.</p>':''}<div class="word-credits"><a href="${result.dictionarySource==='MyMemory'?'https://mymemory.translated.net/':'https://download.freedict.org/dictionaries/deu-fra/2025.11.23/'}" target="_blank" rel="noopener">${esc(result.dictionarySource||'Dictionnaire')}</a><a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">Données FreeDict/WikDict · CC BY-SA 3.0</a>${result.pronunciation?`<a href="${esc(result.pronunciation.source)}" target="_blank" rel="noopener">Audio : ${esc(result.pronunciation.artist||'Wikimedia Commons')} · ${esc(result.pronunciation.license)}</a>`:''}</div>`;
-  }catch(error){if(sequence===pdfLookupSequence)card.innerHTML+=`<p class="word-error">${esc(error.message)}</p>`;}
+    }catch(error){
+    if(sequence!==pdfLookupSequence)return;
+    pdfWordResult={word,lemma:word};
+    card.innerHTML=`<button class="word-close" data-close-word aria-label="Fermer">×</button><h2 lang="de">${esc(word)}</h2><p class="word-error">${esc(error.message)}</p><button class="primary" data-pronounce-word>${icon('volume')} Écouter le mot</button>`;
+  }
+  if(play&&sequence===pdfLookupSequence)pronouncePDFWord();
 }
 async function pronouncePDFWord(slow=false){
   if(!pdfWordResult)return;const result=pdfWordResult,lemma=result.lemma;

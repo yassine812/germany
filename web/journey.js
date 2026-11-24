@@ -1,6 +1,7 @@
 'use strict';
 
 let foxJourney = null;
+let mapObserver = null;
 const levels = ['A1.1', 'A1.2', 'A2.1'];
 const levelNames = {
   'A1.1': 'Les premiers mots',
@@ -23,13 +24,14 @@ function recordingJourneyHTML() {
   const answered = Object.values(assessmentProgress(state.level).pages).filter(Boolean).length;
   const assessed = answered === assessment.pages.length;
   const assessmentUrl = '#assessment/' + state.level;
-  return `<div class="journey-header"><h1>Mon parcours</h1>${journeyModes()}</div>
+  return `<div class="journey-header"><h1>Mon parcours</h1><a class="roadmap-library secondary" href="#library">${icon('book')} Bibliothèque</a></div>
     ${journeyLevels()}
     <div class="journey-grid"><section class="journey-trail" aria-label="Carte du niveau ${state.level}">
       <header class="journey-current">
         <img src="assets/journey.svg" alt="">
         <div><span class="world-kicker">Niveau ${state.level}</span><h2>${levelNames[state.level]}</h2>
         <p>${completed} / ${all.length} leçons terminées</p>
+        <div class="world-supports" aria-label="Dans une leçon">${icon('play')} Cours ${icon('book')} PDF et exercices ${icon('mic')} Oral</div>
         ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${state.level}</a>` :
           finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
         <button class="primary" data-start="${current.id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : progress(current.id).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
@@ -62,6 +64,8 @@ function journeyChapter(all, current, title, unit, openUnit) {
   const lessons = all.filter(l => l.unit === unit);
   if (!lessons.length) return '';
   const done = lessons.filter(l => isDone(l.id)).length;
+  const firstUnfinished = lessons.findIndex(l => !isDone(l.id));
+  const trailProgress = firstUnfinished < 0 ? 100 : 100 * firstUnfinished / Math.max(1, lessons.length - 1);
   const height = lessons.length * 104 + 16;
   const points = lessons.map((_, i) => [50 + Math.sin(i * 1.4) * 9, i * 104 + 60]);
   const line = points.map(([x,y],i) => {
@@ -73,7 +77,8 @@ function journeyChapter(all, current, title, unit, openUnit) {
     <summary><span class="chapter-emblem">${icon(done === lessons.length ? 'trophy' : 'book')}</span>
     <span><small>CHAPITRE ${unit+1}</small><strong>${esc(title)}</strong><span>${done} / ${lessons.length} étapes</span></span>
     <span class="chapter-chevron">${icon('chevron')}</span></summary>
-    <div class="chapter-road" style="height:${height}px"><svg class="road-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true"><path d="${line}"/></svg>
+    <div class="chapter-road" style="height:${height}px"><svg class="road-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true">
+    <path class="road-ahead" d="${line}"/><path class="road-done" pathLength="100" style="--travelled:${trailProgress}" d="${line}"/></svg>
     ${lessons.map((l, i) => {
       const next = l.id === (foxJourney?.to || current.id);
       const p = state.lessons[l.id] || {};
@@ -87,24 +92,16 @@ function journeyChapter(all, current, title, unit, openUnit) {
 }
 
 function journeyLevels() {
-  const reading = route.page === 'books-path';
   return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map((level, index) => {
-    const lessons = reading ? data.books.filter(b => b.level === level).flatMap(b => b.pages.map(p => [b, p])) : data.lessons.filter(l => l.level === level);
-    const done = reading ? lessons.filter(([b, p]) => readingProgress(b)[p.page]).length : lessons.filter(l => isDone(l.id)).length;
-    return `<a class="world-card" data-world="${level}" href="#${reading ? 'books-path' : 'path'}/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
+    const lessons = data.lessons.filter(l => l.level === level);
+    const done = lessons.filter(l => isDone(l.id)).length;
+    return `<a class="world-card" data-world="${level}" href="#path/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
       <span class="world-card-icon">${icon(levelIcons[index])}</span>
       <span class="world-card-body"><strong>Niveau ${level}</strong><span>${levelNames[level]}</span>
       <progress value="${done}" max="${lessons.length || 1}" aria-label="Progression ${level}"></progress>
-      <small>${done} / ${lessons.length} ${reading ? 'pages' : 'leçons'}</small></span>
+      <small>${done} / ${lessons.length} leçons</small></span>
     </a>`;
   }).join('')}</nav>`;
-}
-
-function journeyModes() {
-  return `<nav class="journey-modes" aria-label="Mes parcours">
-    <a href="#path/${state.level}" ${route.page !== 'books-path' ? 'aria-current="page"' : ''}>${icon('play')} Leçons enregistrées</a>
-    <a href="#books-path/${state.level}" ${route.page === 'books-path' ? 'aria-current="page"' : ''}>${icon('book')} Parcours des livres</a>
-  </nav>`;
 }
 
 function dailyPanel() {
@@ -148,6 +145,17 @@ function nextJourneyLesson(current) {
 
 function animateJourney() {
   updateDailyPanel();
+  mapObserver?.disconnect();
+  if (route.page === 'path' && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    mapObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add('step-arrived');
+        mapObserver.unobserve(entry.target);
+      }
+    },{threshold:.12});
+    $$('.map-step').forEach(step => mapObserver.observe(step));
+  }
   if (route.page !== 'path' || !foxJourney) return;
   const move = foxJourney;
   foxJourney = null;
@@ -170,27 +178,6 @@ function animateJourney() {
       {transform:'translate(0,0) rotate(0)'}
     ], {duration:850,easing:'cubic-bezier(.2,.8,.3,1)'});
   });
-}
-
-function readingProgress(book) {
-  return (state.studyPages || {})[book.id] || {};
-}
-
-function bookJourneyHTML() {
-  const books = data.books.filter(b => b.level === state.level);
-  return `<div class="journey-header"><h1>Parcours des livres</h1>${journeyModes()}</div>
-  ${journeyLevels()}<div class="journey-grid"><section class="reading-journey" aria-label="Livres du niveau ${state.level}">
-  ${books.map(book => {
-    const pagesDone = readingProgress(book);
-    const count = book.pages.filter(p => pagesDone[p.page]).length;
-    const next = book.pages.find(p => !pagesDone[p.page]) || book.pages[0];
-    return `<article class="reading-stop">
-      <img src="${book.pages[0].image}" loading="lazy" alt="">
-      <div><h2>${esc(book.title)}</h2><p>${count} / ${book.pages.length} pages travaillées</p>
-      <progress max="${book.pages.length}" value="${count}" aria-label="Pages travaillées"></progress>
-      <a class="secondary" href="#book/${book.id}/${next.page}">${count ? 'Reprendre le livre' : 'Ouvrir le livre'}</a></div>
-    </article>`;
-  }).join('')}</section><aside>${dailyPanel()}</aside></div>`;
 }
 
 document.addEventListener('click', event => {

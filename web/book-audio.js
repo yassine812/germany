@@ -1,10 +1,16 @@
 'use strict';
 function readerZoom(){return Math.max(1,Math.min(3,Number(state.bookZoom)||1))}
-function readerZoomHTML(){return `<div class="zoom-controls" role="group" aria-label="Zoom de la page"><button class="icon-btn" data-zoom="-0.25" aria-label="Réduire la page" ${readerZoom()===1?'disabled':''}>−</button><span id="reader-zoom-label">${Math.round(readerZoom()*100)} %</span><button class="icon-btn" data-zoom="0.25" aria-label="Agrandir dans le lecteur" ${readerZoom()===3?'disabled':''}>+</button></div>`}
+function readerZoomHTML(){return `<div class="zoom-controls" role="group" aria-label="Vue et zoom de la page"><button class="paper-view" data-paper-view>${paperView()==='page'?'Pleine largeur':'Page entière'}</button><button class="icon-btn" data-zoom="-0.25" aria-label="Réduire la page" ${readerZoom()===1?'disabled':''}>−</button><span id="reader-zoom-label">${Math.round(readerZoom()*100)} %</span><button class="icon-btn" data-zoom="0.25" aria-label="Agrandir dans le lecteur" ${readerZoom()===3?'disabled':''}>+</button></div>`}
 document.addEventListener('click',e=>{
   const button=e.target.closest('[data-zoom]');if(!button)return;
   state.bookZoom=Math.max(1,Math.min(3,readerZoom()+Number(button.dataset.zoom)));save();
-  document.querySelectorAll('.reader-scroll img,.exercise-source,.pdf-paper').forEach(image=>image.style.width=state.bookZoom*100+'%');
+  state.pdfViewMode='width';
+  save();
+  const paper=document.getElementById('pdf-paper');
+  paper?.style.setProperty('--pdf-zoom',state.bookZoom);
+  document.getElementById('pdf-stage')?.classList.remove('fit-paper');
+  const view=document.querySelector('[data-paper-view]');
+  if(view)view.textContent='Page entière';
   const label=document.querySelector('#reader-zoom-label');if(label)label.textContent=Math.round(state.bookZoom*100)+' %';
   const minus=document.querySelector('[data-zoom="-0.25"]'),plus=document.querySelector('[data-zoom="0.25"]');
   if(minus)minus.disabled=state.bookZoom===1;if(plus)plus.disabled=state.bookZoom===3;

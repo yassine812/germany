@@ -41,7 +41,7 @@ function currentPDFCue(media, l) {
 function syncCoursePage(media) {
   if (route.page !== 'lesson' || media.seeking || document.activeElement?.matches('textarea,input:not([type="checkbox"]),select')) return;
   const l = lesson(route.id);
-  if (readerState?.key !== l?.id) return;
+  if (readerState?.lessonId !== l?.id) return;
   const cue = currentPDFCue(media, l);
   if (pdfHeldCue !== null) {
     if (cue === pdfHeldCue || !cue) {

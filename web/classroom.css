@@ -262,3 +262,76 @@
   .assessment-layout .classroom-coach {display:block;grid-row:2}
   .assessment-layout .classroom-answers {inset:auto;border:0;box-shadow:none;z-index:auto}
 }
+
+/* Shared paper reader and workbook review */
+.classroom-document .reader {background:#eee8f4;border:1px solid var(--world-edge);box-shadow:0 5px 15px #29203914}
+.classroom-document .reader-toolbar {background:#faf6ff}
+.classroom-document .page-sync {background:var(--world-deep);color:white;min-height:40px;font-weight:800}
+.classroom-document .pdf-stage {padding:11px;background:#d9d3e4;container-type:size}
+.classroom-document .fit-paper {overflow:auto}
+.classroom-document .pdf-paper {
+  min-width:0;width:calc(100% * var(--pdf-zoom,1));margin-inline:auto;border:1px solid #bfb6cc;
+  box-shadow:0 4px 18px #33274239;
+}
+.classroom-document .fit-paper .pdf-paper {width:min(100%,calc((100cqh - 22px) * var(--page-aspect,.707)))}
+.classroom-document .paper-view {
+  border:1px solid var(--world-edge);background:var(--world-tint);color:var(--world-deep);border-radius:8px;
+  font-size:.875rem;padding:6px 9px;font-weight:800;min-height:34px;white-space:nowrap;
+}
+.classroom-document .reader-toolbar .zoom-controls {flex-wrap:wrap}
+.classroom-document .reader-toolbar .zoom-controls>span {min-width:40px}
+.classroom-document:has(.reader.is-expanded) {z-index:121}
+.classroom-document .reader.is-expanded {
+  position:fixed;inset:10px max(10px,calc((100vw - 1190px)/2));height:auto;z-index:121;
+  box-shadow:0 0 0 100vmax #261b3bcc;
+}
+body:has(.reader.is-expanded) {overflow:hidden}
+.word-card,.pdf-word-actions {z-index:150}
+.pdf-word-actions {
+  position:fixed;display:flex;gap:4px;align-items:center;padding:5px;border-radius:10px;
+  border:1px solid var(--world-edge);background:#fffbff;box-shadow:0 5px 20px #29203936;max-width:calc(100vw - 16px);
+}
+.pdf-word-actions>strong {max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-inline:5px;color:var(--world-deep)}
+.pdf-word-actions button {
+  display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid var(--world-edge);border-radius:7px;background:var(--world-tint);
+  color:var(--world-deep);font-size:.875rem;font-weight:800;
+}
+.pdf-word-actions .icon,.pdf-course-link .icon {width:17px;height:17px}
+.pdf-course-link {display:inline-flex;align-items:center;gap:6px;font-size:.875rem;font-weight:800}
+.book-reference-link {font-size:.875rem;display:inline-block;margin:9px 0 0}
+.lesson-guide {
+  border:1px solid var(--world-edge);border-radius:13px;background:var(--world-tint);
+  color:var(--world-deep);padding:12px 15px;margin-bottom:15px;
+}
+.lesson-guide h2 {display:flex;align-items:center;gap:7px;font-size:1.05rem;margin-bottom:5px}
+.lesson-guide p {line-height:1.55}
+.lesson-guide summary {cursor:pointer;font-weight:800;margin-top:8px}
+.lesson-guide summary .icon {width:17px;height:17px;vertical-align:middle}
+.application-body {margin-top:10px}
+.application-body .task-feedback p {margin-top:3px}
+.workbook-task {margin-bottom:0}
+.workbook-task>summary>strong {flex:1;color:var(--world-deep)}
+.workbook-task .guided-task-body {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(132px,100%),1fr));gap:12px}
+.workbook-task .guided-answer-label {margin:0;color:var(--world-deep);min-width:0}
+.workbook-task .guided-answer-label:has(textarea),.workbook-task .old-answer {grid-column:1/-1}
+.workbook-part-status:not(:empty) {display:block;margin-top:5px;font-size:.8125rem;line-height:1.35}
+.workbook-part-status.correct {color:#23633b}
+.workbook-part-status.review {color:#943d41}
+.workbook-part-status.review ins {background:#ffded8;text-decoration:none;font-weight:850}
+.workbook-part-status.empty {color:#673858}
+.workbook-task [aria-invalid="true"] {border-color:#ac5756;background:#fff5f3}
+.workbook-task [data-grade=correct] input,.workbook-task [data-grade=correct] textarea {border-color:#4f9461;background:#f1faef}
+.assessment-review {display:flex;gap:6px;flex-wrap:wrap;padding:0;list-style:none}
+.assessment-review button {border:1px solid var(--world-edge);padding:5px 8px;background:#fffcff;border-radius:7px}
+.workbook-page-result:not(:empty) {margin-top:9px;font-weight:800;color:var(--world-deep)}
+@media (max-width:650px) {
+  .classroom-document .reader-toolbar .zoom-controls .paper-view {padding-inline:5px;font-size:.75rem;white-space:normal}
+  .classroom-document .reader-toolbar .zoom-controls>span {display:none}
+  .classroom-document .reader.is-expanded {inset:4px}
+  .classroom-document .pdf-tools {gap:6px;min-width:0}
+  .pdf-course-link {font-size:.75rem}
+}
+@media (max-width:345px) {
+  .split-classroom .zoom-controls {grid-column:1 / -1}
+  .split-classroom .reader-nav {grid-column:1 / -1}
+}
