@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/course.json", "destination": "/api/course?key=course.json" },
+    { "source": "/solutions.json", "destination": "/api/course?key=solutions.json" },
+    { "source": "/api/word", "destination": "/api/course?key=word" },
+    { "source": "/api/version", "destination": "/build.json" },
+    { "source": "/media/:file", "destination": "/api/course?key=media/:file" },
+    { "source": "/assets/:group(books|book-audio|audio|words|text|dictionary)/:file+", "destination": "/api/course?key=assets/:group/:file+" }
+  ],
+  "headers": [
+    { "source": "/(.*)", "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+    ] }
+  ]
+}
