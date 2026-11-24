@@ -11,6 +11,7 @@ function findPageLesson(bookId, page) {
         for (let number = ref.start; number <= ref.end; number++) {
           const key = ref.book + ':' + number;
           const onScreen = l.pageCues?.some(cue => cue.book === ref.book && cue.page === number);
+          if (ref.book==='notes' && !onScreen) continue;
           const score = onScreen ? 3 : ref.purpose === 'À l’écran' ? 2 : 1;
           if ((pageLessons.get(key)?.score || 0) < score) pageLessons.set(key, {l,score});
         }
@@ -25,6 +26,7 @@ function lessonPageURL(l, bookId, page) {
 }
 
 function libraryBookURL(b) {
+  if (b.id === 'notes') return '#path/' + preparationLevel;
   if (b.kind === 'test') return '#assessment/' + b.level;
   for (const page of b.pages) {
     const linked = findPageLesson(b.id, page.page);

@@ -95,14 +95,5 @@ document.addEventListener('click',e=>{
   const letter=e.target.closest('[data-answer-letter]');
   if(letter){const field=document.getElementById(letter.dataset.answerTarget);field.setRangeText(letter.dataset.answerLetter,field.selectionStart,field.selectionEnd,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));}
 });
-document.addEventListener('toggle', event => {
-  if (!event.target.matches('.map-chapter[open]') || route.page !== 'path') return;
-  for (const chapter of document.querySelectorAll('.map-chapter[open]')) {
-    if (chapter !== event.target) chapter.open = false;
-  }
-  state.journeyOpen ||= {};
-  state.journeyOpen[state.level] = Number(event.target.dataset.mapUnit);
-  save();
-}, true);
 document.addEventListener('input',e=>{const field=e.target;if(!field.dataset.exerciseAnswer)return;lastActive=Date.now();state.answers[field.dataset.exerciseAnswer]=field.value;save();field.closest('.exercise-response').querySelector('[data-save-status]').textContent=storageError?'Export recommandé':'Enregistré ✓';});
 document.addEventListener('change',e=>{if(e.target.hasAttribute('data-exercise-speed'))e.target.closest('.exercise-listen').querySelector('audio').playbackRate=Number(e.target.value);});

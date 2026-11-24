@@ -1,6 +1,8 @@
 'use strict';
 
+const preparationSessions = new Set(['A1.1-s1', 'A1.1-s2']);
 let reviewedGroups = [];
+let recordingsBySession = new Map();
 let groupsByClip = new Map();
 let discardedSessions = {};
 let continuingPlayback = null;
@@ -9,6 +11,11 @@ function loadReviewedGroups(review) {
   const byId = new Map(data.lessons.map(l=>[l.id,l]));
   discardedSessions = review?.aliases || {};
   const entries = review?.groups || [];
+  const notes = book('notes');
+  if (notes) {
+    notes.title = 'Préparation';
+    notes.level = preparationLevel;
+  }
   groupsByClip = new Map();
   reviewedGroups = [];
   for (const entry of entries) {
@@ -28,10 +35,19 @@ function loadReviewedGroups(review) {
   }
   const order = new Map(data.lessons.map((l,i)=>[l.id,i]));
   reviewedGroups.sort((a,b)=>order.get(a.id)-order.get(b.id));
-  const counts = {};
-  for (const group of reviewedGroups) {
-    counts[group.level] = (counts[group.level] || 0) + 1;
-    group.number = counts[group.level];
+  recordingsBySession = new Map();
+  const sources = new Map(data.sessions?.map(s=>[s.id,s]));
+  for (const chapter of reviewedGroups) {
+    if (preparationSessions.has(chapter.session)) chapter.level = preparationLevel;
+    let recording = recordingsBySession.get(chapter.session);
+    if (!recording) {
+      recording = {id:chapter.session,level:chapter.level,kind:chapter.kind,
+        title:sources.get(chapter.session)?.title || chapter.title,chapters:[],parts:[]};
+      recordingsBySession.set(chapter.session,recording);
+    }
+    recording.chapters.push(chapter);
+    recording.parts.push(...chapter.parts);
+    chapter.number = recording.chapters.length;
   }
   transferDiscardedHistory();
 }
@@ -41,11 +57,16 @@ function reviewedGroup(l) {
   return groupsByClip.get(l.id) || {...l,parts:[l]};
 }
 
+function recordingFor(l) {
+  return recordingsBySession.get(l.session);
+}
+
 function groupDone(group) {
   return group.parts.every(l=>isDone(l.id));
 }
 
 function groupStart(group) {
+  if (group.chapters) return groupStart(group.chapters.find(chapter=>!groupDone(chapter)) || group.chapters.at(-1));
   const unfinished = group.parts.filter(l=>!state.lessons[l.id]?.watch && !isDone(l.id));
   return unfinished.find(l=>state.lessons[l.id]?.position) || unfinished[0] || group.parts.at(-1);
 }
@@ -129,6 +150,20 @@ function resumeCoursePassage(l, media) {
   media.play().catch(()=>{});
 }
 
+function chapterListHTML(l) {
+  const recording = recordingFor(l);
+  if (!recording || recording.chapters.length < 2) return '';
+  const current = reviewedGroup(l);
+  return `<label class="course-chapters">
+    <span>Chapitres de la séance</span>
+    <select data-course-chapter>
+      ${recording.chapters.map(chapter=>`<option value="${groupStart(chapter).id}" ${chapter===current?'selected':''}>
+        ${chapter.number}. ${esc(chapter.title)}${groupDone(chapter)?' ✓':''}
+      </option>`).join('')}
+    </select>
+  </label>`;
+}
+
 function passageListHTML(l) {
   const {parts} = reviewedGroup(l);
   if (parts.length < 2) return '';
@@ -141,7 +176,7 @@ function passageListHTML(l) {
 }
 
 document.addEventListener('change',event=>{
-  if (!event.target.matches('[data-course-passage]')) return;
+  if (!event.target.matches('[data-course-passage], [data-course-chapter]')) return;
   readerState = null;
   quiz = null;
   navigate('#lesson/'+event.target.value+'/watch');

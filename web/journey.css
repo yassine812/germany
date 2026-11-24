@@ -2,6 +2,7 @@
   --bg:#f4edf8;--ink:#281d3a;--muted:#615471;--green:#533681;--dark:#3b265d;
   --mint:#eee2fc;--line:#ded0eb;--gold:#b15d21;
 }
+[data-world="preparation"] {--world:#285999;--world-deep:#17365e;--world-tint:#d9e9ff;--world-soft:#ebf4ff;--world-edge:#aec9eb;--world-bright:#bee4ff}
 [data-world="A1.1"] {--world:#13675b;--world-deep:#08473f;--world-tint:#d3f5e8;--world-soft:#e5f8ef;--world-edge:#a8dace;--world-bright:#a5f0d2}
 [data-world="A1.2"] {--world:#6740a2;--world-deep:#472574;--world-tint:#ebdcff;--world-soft:#f3e9ff;--world-edge:#d2b5fa;--world-bright:#e2c9ff}
 [data-world="A2.1"] {--world:#974921;--world-deep:#6f351d;--world-tint:#ffe7b9;--world-soft:#fff0d6;--world-edge:#efca8b;--world-bright:#ffd891}
@@ -25,7 +26,7 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 
 .journey-header {display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 18px}
 .journey-header h1 {font:900 clamp(1.9rem,4vw,2.8rem)/1.05 Nunito,system-ui,sans-serif;letter-spacing:-.04em}
-.journey-levels {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:24px}
+.journey-levels {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}
 .world-card {
   display:flex;align-items:flex-start;gap:12px;padding:14px 15px;border:2px solid var(--world-edge);border-radius:18px;
   background:var(--world-tint);box-shadow:0 4px 0 var(--world-edge);text-decoration:none;color:var(--world-deep);
@@ -75,16 +76,8 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 .level-finish .boundary-icon {background:var(--world-bright);color:var(--world-deep)}
 
 .journey-chapter {margin:0 0 9px;border-radius:14px;background:var(--world-tint)}
-.journey-chapter>summary {gap:11px;padding:13px;background:var(--world-tint);color:var(--world-deep);border:1px solid var(--world-edge);border-radius:14px}
-.journey-chapter[open]>summary {color:white;background:var(--world);border-color:var(--world);border-radius:14px 14px 0 0}
-.journey-chapter>summary>span:nth-child(2) {gap:2px}
-.journey-chapter>summary small {font-size:.78rem}
-.journey-chapter>summary strong {font-size:1.12rem}
-.journey-chapter>summary span>span {color:inherit;font-size:.875rem}
-.journey-chapter .chapter-emblem {width:40px;height:40px;background:var(--world-bright);color:var(--world-deep)}
-.journey-chapter .chapter-emblem .icon {width:22px;height:22px}
 .chapter-road {
-  container:journey-road / inline-size;margin:0;min-height:0;overflow:hidden;border-radius:0 0 14px 14px;
+  container:journey-road / inline-size;margin:0;min-height:0;overflow:hidden;border-radius:14px;
   background:radial-gradient(circle,var(--world-edge) 1px,transparent 1.6px) 0 0/21px 21px,var(--world-soft);
 }
 .journey-chapter .road-line path {stroke:var(--world-edge);stroke-width:8;stroke-dasharray:2 14;stroke-linecap:round}
@@ -155,7 +148,7 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 @media (max-width:560px) {
   .topbar {height:62px}
   .journey-header {align-items:flex-start;flex-direction:column;gap:12px}
-  .journey-levels {gap:7px;margin-bottom:16px}
+  .journey-levels {grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:16px}
   .world-card {display:block;border-radius:12px;padding:9px 8px}
   .world-card-icon {display:none}
   .world-card strong {font-size:.98rem}
@@ -178,7 +171,7 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
 }
 .journey-chapter .map-step {height:60px;width:1px}
 @media (prefers-reduced-motion:no-preference) {
-  .map-chapter[open] .road-ahead {animation:road-markers 3.8s linear infinite}
+  .journey-chapter .road-ahead {animation:road-markers 3.8s linear infinite}
   .journey-current img {animation:fox-float 4.8s ease-in-out infinite}
   .journey-mascot {animation:fox-float 2.8s ease-in-out infinite}
   .map-step.is-current .map-orbit {animation:step-pulse 2.7s ease-out infinite}
@@ -191,3 +184,8 @@ body {min-height:100dvh;background:radial-gradient(ellipse at 85% 0,#ffe6ef 0,tr
   55% {box-shadow:0 5px 0 var(--world-deep),0 0 0 11px transparent}
 }
 @keyframes map-arrival {from {opacity:.68;translate:0 7px} to {opacity:1;translate:0 0}}
+
+.preparation-pdf span:not(.boundary-icon) {font-size:.85rem}
+@media (min-width:561px) and (max-width:1020px) {
+  .journey-levels {grid-template-columns:repeat(2,minmax(0,1fr))}
+}

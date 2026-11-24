@@ -2,57 +2,68 @@
 
 let foxJourney = null;
 let mapObserver = null;
-const levels = ['A1.1', 'A1.2', 'A2.1'];
+const preparationLevel = 'preparation';
+const levels = [preparationLevel, 'A1.1', 'A1.2', 'A2.1'];
 const levelNames = {
+  preparation: 'Alphabet et premiers échanges',
   'A1.1': 'Les premiers mots',
   'A1.2': 'L’allemand au quotidien',
   'A2.1': 'Des phrases qui voyagent'
 };
-const levelIcons = ['leaf', 'book', 'star'];
+const levelIcons = ['file', 'leaf', 'book', 'star'];
+
+function levelLabel(level) {
+  return level === preparationLevel ? 'Préparation' : 'Niveau ' + level;
+}
 
 function recordingJourneyHTML() {
-  const all = reviewedGroups.filter(l => l.level === state.level);
-  const remaining = all.filter(l => !groupDone(l));
-  const savedNext = groupsByClip.get(state.journeyNext?.[state.level])?.id;
-  const current = remaining.find(l => l.id === savedNext) || remaining[0] || all.at(-1);
-  const completed = all.filter(groupDone).length;
+  const {level} = state;
+  const all = [...recordingsBySession.values()].filter(recording => recording.level === level);
+  const remaining = all.filter(recording => !groupDone(recording));
+  const remembered = state.journeyNext?.[level];
+  const savedNext = groupsByClip.get(remembered)?.session || remembered;
+  const current = remaining.find(recording => recording.id === savedNext) || remaining[0] || all.at(-1);
   if (!current) return `<div class="journey-header"><h1>Mon parcours</h1>${journeyLevels()}</div>`;
-  const savedUnit = state.journeyOpen?.[state.level];
-  const openUnit = !foxJourney && all.some(l => l.unit === savedUnit) ? savedUnit : current.unit;
-  const nextLevel = levels[levels.indexOf(state.level) + 1];
-  const first = all[0], last = all.at(-1);
-  const finished = completed === all.length;
-  const assessment = assessments[state.level];
-  const answered = Object.values(assessmentProgress(state.level).pages).filter(Boolean).length;
-  const assessed = answered === assessment.pages.length;
-  const assessmentUrl = '#assessment/' + state.level;
+  const completed = all.length - remaining.length;
+  const finished = !remaining.length;
+  const nextLevel = levels[levels.indexOf(level) + 1];
+  const label = levelLabel(level);
+  const assessment = assessments[level];
+  const answered = assessment ? Object.values(assessmentProgress(level).pages).filter(Boolean).length : 0;
+  const assessed = !assessment || answered === assessment.pages.length;
+  const assessmentUrl = '#assessment/' + level;
+  const notes = level === preparationLevel ? book('notes') : null;
   return `<div class="journey-header"><h1>Mon parcours</h1><a class="roadmap-library secondary" href="#library">${icon('book')} Bibliothèque</a></div>
     ${journeyLevels()}
-    <div class="journey-grid"><section class="journey-trail" aria-label="Carte du niveau ${state.level}">
+    <div class="journey-grid"><section class="journey-trail" aria-label="Parcours ${label}">
       <header class="journey-current">
         <img src="assets/journey.svg" alt="">
-        <div><span class="world-kicker">Niveau ${state.level}</span><h2>${levelNames[state.level]}</h2>
-        <p>${completed} / ${all.length} leçons terminées</p>
-        <div class="world-supports" aria-label="Dans une leçon">${icon('play')} Cours ${icon('book')} PDF et exercices ${icon('mic')} Oral</div>
-        ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${state.level}</a>` :
+        <div><span class="world-kicker">${label}</span><h2>${levelNames[level]}</h2>
+        <p>${completed} / ${all.length} séances terminées</p>
+        <div class="world-supports" aria-label="Dans une séance">${icon('play')} Cours ${icon('book')} PDF ${icon('mic')} Oral</div>
+        ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${level}</a>` :
           finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
-        <button class="primary" data-start="${groupStart(current).id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : groupProgress(current).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
-        <p class="world-next">${esc(current.title)} · ${lessonMinutes(current)} min</p>`}</div>
+        <button class="primary" data-start="${groupStart(current).id}">${icon('play')} ${finished ? 'Revoir la dernière séance' : groupProgress(current).position ? 'Reprendre ma séance' : 'Commencer ma séance'}</button>
+        <p class="world-next">${esc(current.title)} · ${current.chapters.length} chapitres</p>`}</div>
       </header>
-      <div class="level-boundary">
+      ${notes ? `<div class="level-boundary preparation-pdf">
+        <span class="boundary-icon">${icon('book')}</span>
+        <div><strong>Préparation · PDF</strong><span>${notes.pages.length} pages</span></div>
+        <a class="secondary" href="#book/${notes.id}/1/reference">Feuilleter le PDF</a>
+      </div>` : `<div class="level-boundary">
         <span class="boundary-icon">${icon('play')}</span>
-        <div><strong>Début du niveau ${state.level}</strong><button data-start="${first.id}" class="link-button">${esc(first.title)}</button></div>
+        <div><strong>Début du niveau ${level}</strong></div>
         <button class="secondary jump-finish" data-jump-finish>Voir la fin</button>
-      </div>
-      ${data.units[state.level].map((title, index) => journeyChapter(all, current, title, index, openUnit)).join('')}
-      <section class="level-boundary level-assessment" aria-label="Bilan de fin de niveau">
-        <span class="boundary-icon">${icon('book')}</span><div><strong>Bilan de fin de niveau ${state.level}</strong>
+      </div>`}
+      ${journeyTrail(all, current)}
+      ${assessment ? `<section class="level-boundary level-assessment" aria-label="Bilan de fin de niveau">
+        <span class="boundary-icon">${icon('book')}</span><div><strong>Bilan de fin de niveau ${level}</strong>
         <span>${assessment.exercises ? 'Tests du cahier Menschen' : 'Ton PDF Test A1.1'} · ${answered} / ${assessment.pages.length} pages validées</span></div>
         <a class="secondary" href="${assessmentUrl}${assessed ? '/result' : ''}">${assessed ? 'Voir mon bilan' : answered ? 'Reprendre le bilan' : 'Ouvrir le bilan'}</a>
-      </section>
+      </section>` : ''}
       <footer class="level-boundary level-finish" id="level-finish" tabindex="-1">
         <span class="boundary-icon">${icon('trophy')}</span>
-        <div><strong>${finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${groupStart(last).id}" class="link-button">${esc(last.title)}</button></div>
+        <div><strong>${level===preparationLevel ? 'Fin de la préparation' : (finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau ')+level}</strong></div>
         ${nextLevel && assessed ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
       </footer>
     </section><aside class="journey-rail">${dailyPanel()}</aside></div>`;
@@ -62,10 +73,7 @@ function lessonMinutes(l) {
   return Math.max(1, Math.ceil(l.effectiveDuration / 60));
 }
 
-function journeyChapter(all, current, title, unit, openUnit) {
-  const lessons = all.filter(l => l.unit === unit);
-  if (!lessons.length) return '';
-  const done = lessons.filter(groupDone).length;
+function journeyTrail(lessons, current) {
   const firstUnfinished = lessons.findIndex(l => !groupDone(l));
   const trailProgress = firstUnfinished < 0 ? 100 : 100 * firstUnfinished / Math.max(1, lessons.length - 1);
   const height = lessons.length * 104 + 16;
@@ -75,34 +83,32 @@ function journeyChapter(all, current, title, unit, openUnit) {
     const [previousX, previousY] = points[i-1];
     return `C ${previousX*6} ${previousY+50} ${x*6} ${y-50} ${x*6} ${y}`;
   }).join(' ');
-  return `<details class="map-chapter journey-chapter" data-map-unit="${unit}" ${unit === openUnit ? 'open' : ''}>
-    <summary><span class="chapter-emblem">${icon(done === lessons.length ? 'trophy' : 'book')}</span>
-    <span><small>CHAPITRE ${unit+1}</small><strong>${esc(title)}</strong><span>${done} / ${lessons.length} étapes</span></span>
-    <span class="chapter-chevron">${icon('chevron')}</span></summary>
+  return `<section class="journey-chapter" aria-label="Séances du niveau">
     <div class="chapter-road" style="height:${height}px"><svg class="road-line" viewBox="0 0 600 ${height}" preserveAspectRatio="none" aria-hidden="true">
     <path class="road-ahead" d="${line}"/><path class="road-done" pathLength="100" style="--travelled:${trailProgress}" d="${line}"/></svg>
     ${lessons.map((l, i) => {
       const next = l.id === (foxJourney?.to || current.id);
-      const p = groupProgress(l);
+      const completed = groupDone(l);
       const start = groupStart(l).id;
-      return `<div id="map-${l.id}" class="map-step ${i%2 ? 'label-right' : 'label-left'} ${next ? 'is-current' : ''} ${p.completed ? 'is-complete' : ''}" style="--stop-x:${points[i][0]}%;top:${i*104+29}px">
+      const chaptersDone = l.chapters.filter(groupDone).length;
+      return `<div id="map-${l.id}" class="map-step ${i%2 ? 'label-right' : 'label-left'} ${next ? 'is-current' : ''} ${completed ? 'is-complete' : ''}" style="--stop-x:${points[i][0]}%;top:${i*104+29}px">
         ${next ? '<img class="journey-mascot" src="assets/fox.svg" alt="Ta position sur la carte">' : ''}
-        <button class="map-orbit" data-start="${start}" aria-label="${esc(l.title)}${p.completed ? ' · terminée' : ''}">${icon(p.completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
-        <button class="map-step-label" data-start="${start}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${next && !p.completed ? (p.position ? 'À reprendre · ' : 'Prochaine leçon · ') : ''}${lessonMinutes(l)} min</span></button>
+        <button class="map-orbit" data-start="${start}" aria-label="${esc(l.title)}${completed ? ' · terminée' : ''}">${icon(completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
+        <button class="map-step-label" data-start="${start}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${chaptersDone} / ${l.chapters.length} chapitres</span></button>
       </div>`;
     }).join('')}</div>
-  </details>`;
+  </section>`;
 }
 
 function journeyLevels() {
   return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map((level, index) => {
-    const lessons = reviewedGroups.filter(l => l.level === level);
+    const lessons = [...recordingsBySession.values()].filter(l => l.level === level);
     const done = lessons.filter(groupDone).length;
     return `<a class="world-card" data-world="${level}" href="#path/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
       <span class="world-card-icon">${icon(levelIcons[index])}</span>
-      <span class="world-card-body"><strong>Niveau ${level}</strong><span>${levelNames[level]}</span>
+      <span class="world-card-body"><strong>${levelLabel(level)}</strong><span>${levelNames[level]}</span>
       <progress value="${done}" max="${lessons.length || 1}" aria-label="Progression ${level}"></progress>
-      <small>${done} / ${lessons.length} leçons</small></span>
+      <small>${done} / ${lessons.length} séances</small></span>
     </a>`;
   }).join('')}</nav>`;
 }
@@ -126,7 +132,7 @@ function updateDailyPanel() {
     $('#daily-label').textContent = `${Math.floor(elapsed / 60)} / ${state.goal} min aujourd’hui`;
     const count = streak(state.days);
     const completed = state.days[today()]?.lessons || 0;
-    $('[data-daily-streak]').textContent = `${completed} leçon${completed > 1 ? 's' : ''} aujourd’hui · ${count} jour${count > 1 ? 's' : ''} de suite`;
+    $('[data-daily-streak]').textContent = `${completed} chapitre${completed > 1 ? 's' : ''} aujourd’hui · ${count} jour${count > 1 ? 's' : ''} de suite`;
     const weekHTML = week();
     const calendar = $('#daily-week');
     if (calendar.dataset.calendar !== weekHTML) {
@@ -140,10 +146,13 @@ function updateDailyPanel() {
 
 function nextJourneyLesson(current) {
   const group = reviewedGroup(current);
+  const unfinished = reviewedGroups.filter(chapter => !groupDone(chapter));
   const later = reviewedGroups.slice(reviewedGroups.indexOf(group) + 1);
-  return later.find(l => l.level === current.level && !groupDone(l))
-    || reviewedGroups.find(l => l.level === current.level && !groupDone(l))
-    || later.find(l => !groupDone(l))
+  return later.find(chapter => chapter.session === group.session && !groupDone(chapter))
+    || unfinished.find(chapter => chapter.session === group.session)
+    || later.find(chapter => chapter.level === group.level && !groupDone(chapter))
+    || unfinished.find(chapter => chapter.level === group.level)
+    || later.find(chapter => !groupDone(chapter))
     || null;
 }
 

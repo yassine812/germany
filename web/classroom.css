@@ -345,6 +345,8 @@ body:has(.reader.is-expanded) {overflow:hidden}
 .book-classroom .classroom-coach:has(.book-answers[hidden]) {display:none}
 #settings-content #lesson-notes {margin:10px 0 0;width:100%}
 
+.course-chapters {display:grid;min-width:0;gap:4px;margin:0 0 9px;font-size:.82rem;color:white}
+.course-chapters select {width:100%;min-width:0;padding:7px 9px;color:#2d2640;background:#fbf8ff;border:1px solid #ffffff40;border-radius:8px}
 .course-passages {
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
   margin:10px 0 3px;padding:8px 10px;background:#ffffff17;color:white;border-radius:9px;

@@ -323,7 +323,7 @@ document.addEventListener('click', event => {
   const next = event.target.closest('[data-continue-level]');
   if (next && route.page === 'assessment') {
     const following = reviewedGroups.find(l => l.level === next.dataset.continueLevel && !groupDone(l));
-    if (following) foxJourney = {to:following.id};
+    if (following) foxJourney = {to:following.session};
     navigate('#path/' + next.dataset.continueLevel);
   }
   if (!event.target.closest('[data-finish-assessment-page]') || route.page !== 'assessment') return;

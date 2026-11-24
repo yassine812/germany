@@ -5,9 +5,10 @@ function activePaper(){return readerState?.pages?.[readerState.index]||null;}
 function classroomLessonHTML(l){
   if(!l)return '<p class="empty">Cette leçon n’existe pas.</p>';
   const group = reviewedGroup(l);
+  const level = levelLabel(group.level);
   if(route.tab==='practice'){
     if(!quiz||quiz.lesson!==l.id)startQuiz(l.id,false);
-    return `<div class="practice-heading"><button class="back" data-tab="watch">${icon('back')} Cours et PDF</button><span>Niveau ${l.level}</span></div>
+    return `<div class="practice-heading"><button class="back" data-tab="watch">${icon('back')} Cours et PDF</button><span>${level}</span></div>
       <div class="quiz-shell"><header class="practice-title"><span class="practice-symbol">${icon('mic')}</span><div><h1>Atelier de pratique</h1><p>${esc(group.title)}</p></div></header>
       ${(l.topics||[l.topic]).length > 1 ? notionTabs(l) : ''}<div id="quiz-area">${quizHTML()}</div></div>`;
   }
@@ -21,9 +22,9 @@ function classroomLessonHTML(l){
   const split = percentSplit(state.studySplit);
   return `<div class="classroom-heading">
     <button class="icon-btn" data-nav="path" aria-label="Retour à la carte">${icon('back')}</button>
-    <div><small>Niveau ${l.level} · Leçon ${group.number}</small><h1>${esc(group.title)}</h1></div>
+    <div><small>${level} · ${esc(recordingFor(l)?.title)} · Chapitre ${group.number}</small><h1>${esc(group.title)}</h1></div>
     <button class="secondary practice-entry" data-tab="practice">${icon('mic')} Pratiquer à l’oral</button>
-    <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : 'Terminer la leçon'}</button>
+    <button class="primary" data-complete="${l.id}" data-course-completion ${canFinishLesson(l)?'':'hidden'}>${groupDone(group) ? 'Mon parcours' : 'Terminer ce chapitre'}</button>
   </div>
   <div class="classroom-layout split-classroom" style="--study-split:${split}%">
     <section class="classroom-document" id="study-document" aria-label="Le PDF de ton cours">${paper}</section>
@@ -31,6 +32,7 @@ function classroomLessonHTML(l){
     <aside class="classroom-coach">
       <section class="classroom-video" aria-label="Ton enregistrement">
         <h2 class="video-label">${icon(l.kind==='audio'?'headphones':'play')} Enregistrement du cours</h2>
+        ${chapterListHTML(l)}
         ${mediaHTML(l)}
         ${passageListHTML(l)}
         <div class="classroom-video-actions">
@@ -47,7 +49,8 @@ function classroomLessonHTML(l){
 function classroomBookHTML(bid){
   const b=book(bid);if(!b)return '<p class="empty">Livre introuvable.</p>';
   const paper=readerHTML(null,bid,Number(route.tab)||1);
-  return `<div class="classroom-heading"><a class="icon-btn" href="#library" aria-label="Retour à la bibliothèque">${icon('back')}</a><div><small>${b.level} · Document de référence</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises data-book-answers-toggle ${pdfTasks(activePaper()).length?'':'hidden'}>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers" ${pdfTasks(activePaper()).length?'':'hidden'}>${exercisePanelHTML(null)}</section></aside></div>`;
+  const back = b.level===preparationLevel ? '#path/'+preparationLevel : '#library';
+  return `<div class="classroom-heading"><a class="icon-btn" href="${back}" aria-label="Retour">${icon('back')}</a><div><small>${b.level===preparationLevel?'Document de préparation':levelLabel(b.level)+' · Document de référence'}</small><h1 title="${esc(b.title)}">${esc(b.title)}</h1></div><button class="secondary" data-toggle-exercises data-book-answers-toggle ${pdfTasks(activePaper()).length?'':'hidden'}>${icon('book')} Répondre</button></div><div class="classroom-layout book-classroom"><section class="classroom-document">${paper}</section><aside class="classroom-coach"><section class="classroom-answers book-answers" id="classroom-answers" ${pdfTasks(activePaper()).length?'':'hidden'}>${exercisePanelHTML(null)}</section></aside></div>`;
 }
 
 function fullPDFPageHTML(b,p){
