@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {scryptSync} from 'node:crypto';
 import {test} from 'node:test';
-import session from '../api/session.js';
+import session, {handleSession} from '../api/session.js';
 import {cookieName, issueSession, passwordOptions, sessionAge, sessionUser} from '../lib/session.js';
 
 const mockPassword = 'Test-only-password-51';
@@ -54,5 +54,46 @@ test('same-origin sign in issues a secure cookie and sign out expires it', async
   } finally {
     if (previous===undefined) delete process.env.DEUTSCHWEG_AUTH;
     else process.env.DEUTSCHWEG_AUTH = previous;
+  }
+});
+
+test('registration creates an encrypted account once and signs in with its own identity', async () => {
+  const previous = {auth:process.env.DEUTSCHWEG_AUTH,data:process.env.DEUTSCHWEG_ACCOUNTS_DATA};
+  process.env.DEUTSCHWEG_AUTH = JSON.stringify(auth);
+  process.env.DEUTSCHWEG_ACCOUNTS_DATA = '17'.repeat(32);
+  const records = new Map();
+  const store = {
+    async get(id){return records.get(id) ?? null;},
+    async create(id,value){
+      if (records.has(id)) return false;
+      records.set(id,value);
+      return true;
+    }
+  };
+  const headers = {host:'course.example',origin:'https://course.example','content-type':'application/json'};
+  const form = {action:'register',username:' Elodie ',name:'Élodie',password:mockPassword,confirmation:mockPassword};
+  const post = body=>handleSession({method:'POST',headers,body},response(),store);
+  try {
+    assert.equal((await post({...form,confirmation:'different'})).code,400);
+    assert.equal((await post({...form,username:auth.username})).code,409);
+    const results = await Promise.all([post(form),post(form)]);
+    assert.deepEqual(results.map(r=>r.code).sort(),[200,409]);
+    assert.equal(records.size,1);
+    const [id,value] = [...records][0];
+    assert.match(id,/^[a-f0-9]{64}$/);
+    assert(!value.includes('elodie') && !value.includes(mockPassword));
+    const login = await post({username:'elodie',password:mockPassword});
+    assert.equal(login.code,200);
+    assert.deepEqual(login.body.user,{username:'elodie',name:'Élodie',legacyProgress:false});
+    const cookie = login.headers['Set-Cookie'].split(';')[0];
+    const who = await session({method:'GET',headers:{...headers,cookie}},response());
+    assert.deepEqual(who.body.user,login.body.user);
+    const owner = await post({username:auth.username,password:mockPassword});
+    assert.equal(owner.body.user.legacyProgress,true);
+  } finally {
+    for (const [name,value] of [['DEUTSCHWEG_AUTH',previous.auth],['DEUTSCHWEG_ACCOUNTS_DATA',previous.data]]) {
+      if (value===undefined) delete process.env[name];
+      else process.env[name]=value;
+    }
   }
 });

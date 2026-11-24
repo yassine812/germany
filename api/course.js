@@ -1,10 +1,10 @@
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {requireSession} from '../lib/session.js';
+import {courseOrigin} from '../lib/course-origin.js';
 
 // The credential grants access only to the existing private course origin.
 // Never follow redirects or proxy methods that can change upstream state.
-const origin = 'https://deutschweg-yassine.tuftedgrackle1.chatgpt.site';
 const publicData = new Set(['course.json', 'solutions.json']);
 const media = /^media\/[\w.-]+\.(?:mp4|m4a|jpg)$/u;
 const asset = /^assets\/(?:books|book-audio|audio|words|text|dictionary)\/[\w./-]+\.(?:webp|mp3|json)$/u;
@@ -45,7 +45,7 @@ export default async function course(req, res) {
   const controller = new AbortController();
   res.once('close', () => controller.abort());
   try {
-    const upstream = await fetch(origin + path, {method, headers, redirect:'manual', signal:controller.signal});
+    const upstream = await fetch(courseOrigin + path, {method, headers, redirect:'manual', signal:controller.signal});
     if (![200, 206, 400, 404, 416, 503].includes(upstream.status)) {
       await upstream.body?.cancel();
       return res.status(502).json({error:'Le stockage du cours est momentanément indisponible.'});

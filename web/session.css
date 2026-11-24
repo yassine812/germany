@@ -12,6 +12,7 @@
 .sign-in-card p {margin:0 0 18px}
 #sign-in-form {display:grid;gap:16px}
 #sign-in-form label {display:grid;gap:6px;font-size:.9rem;font-weight:750}
+#sign-in-form label small {font-weight:500;color:#694f7b;line-height:1.35}
 #sign-in-form input {
   width:100%;min-height:46px;padding:9px 12px;border:1px solid #d5c4e5;border-radius:10px;
   background:white;color:var(--ink);font:inherit;font-size:1rem;
@@ -19,6 +20,7 @@
 #sign-in-form input:focus-visible {outline:3px solid #c4a0ee;outline-offset:1px}
 #sign-in-form [data-sign-in-error] {margin:0;color:#9c2850;font-size:.9rem}
 #sign-in-form .primary {margin-top:4px}
+.session-alternative {display:flex;justify-content:center;margin-top:19px}
 .account-menu {position:relative}
 .account-menu summary.avatar {display:grid;list-style:none;cursor:pointer}
 .account-menu summary::-webkit-details-marker {display:none}

@@ -8,10 +8,14 @@ const icon=(n,cls='')=>`<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden
 const KEY='deutschweg-progress-v1';
 let data,audios={},wordAudio={},wordPlayer=null,wordLast='',route={},quiz=null,readerState=null,lastActive=Date.now(),lastSave=0;
 const defaults=()=>({version:1,level:preparationLevel,unit:0,goal:15,xp:0,lessons:{},answers:{},notes:{},days:{},studyPages:{},voice:'female',audioSpeed:'calm',reviews:{}});
-let state;
-try{state={...defaults(),...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{state=defaults()}
-let storageError=false;
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageError=false}catch{if(!storageError){toast('Le stockage est plein ou indisponible. Exporte tes progrès dans les réglages.');storageError=true}}}
+let state=defaults(), progressStorageKey=null, storageError=false;
+function loadAccountProgress(user) {
+  progressStorageKey=user.legacyProgress ? KEY : KEY+':'+user.username;
+  try {state={...defaults(),...JSON.parse(localStorage.getItem(progressStorageKey)||'{}')}}
+  catch {state=defaults()}
+  storageError=false;
+}
+function save(){if(!progressStorageKey)return;try{localStorage.setItem(progressStorageKey,JSON.stringify(state));storageError=false}catch{if(!storageError){toast('Le stockage est plein ou indisponible. Exporte tes progrès dans les réglages.');storageError=true}}}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('visible'),3500)}
 function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Lagos',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 function dateShift(date,n){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
