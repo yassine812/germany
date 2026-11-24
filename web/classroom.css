@@ -344,3 +344,12 @@ body:has(.reader.is-expanded) {overflow:hidden}
 .book-classroom:has(.book-answers[hidden]) {grid-template-columns:minmax(0,1fr)}
 .book-classroom .classroom-coach:has(.book-answers[hidden]) {display:none}
 #settings-content #lesson-notes {margin:10px 0 0;width:100%}
+
+.course-passages {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  margin:10px 0 3px;padding:8px 10px;background:#ffffff17;color:white;border-radius:9px;
+}
+.course-passages label {display:flex;align-items:center;gap:6px;font-size:.82rem}
+.course-passages select {color:#2d2640;background:#fbf8ff;padding:5px 7px}
+.course-passages .link-button {color:white;font-size:.82rem;text-decoration:underline}
+.course-passages .link-button:hover {color:var(--world-bright)}

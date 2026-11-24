@@ -6,7 +6,7 @@ function findPageLesson(bookId, page) {
   if (!pageLessons) {
     pageLessons = new Map();
     for (const l of data.lessons) {
-      if (!l.mediaUrl) continue;
+      if (!l.mediaUrl || discardedSessions[l.session]) continue;
       for (const ref of l.refs) {
         for (let number = ref.start; number <= ref.end; number++) {
           const key = ref.book + ':' + number;

@@ -13,8 +13,8 @@ const alphabetPractice = {
 };
 
 const alphabetLessonTopics = [
-  'overview','aToG','aToG','hToM','nToQ','rToU','rToU','review','umlauts','umlauts','umlauts',
-  'review','vowels','consonants','consonants','consonants','consonants','consonants','consonants','review','review'
+  'aToG','aToG','aToG','hToM','nToQ','rToU','rToU','umlauts','umlauts','umlauts','umlauts',
+  'vowels','vowels','consonants','consonants','consonants','consonants','consonants','consonants','review','review'
 ];
 
 function alphabetQuestions(l) {
@@ -92,7 +92,7 @@ function quizResult() {
   const next = (l.topics || [l.topic]).find(t => !p.practicedTopics?.[t]);
   const {graded, passed} = quizScore();
   const nextButton = passed && next ? `<button class="primary" data-topic="${next}">Notion suivante</button>` :
-    passed && canFinishLesson(l,p) ? `<button class="primary" data-complete="${q.lesson}">${p.completed ? 'Mon parcours' : 'Valider ma leçon'}</button>` :
+    passed && canFinishLesson(l) ? `<button class="primary" data-complete="${q.lesson}">${p.completed ? 'Mon parcours' : 'Valider ma leçon'}</button>` :
       `<button class="primary" data-start="${q.lesson}">Revenir au cours</button>`;
   return `<div class="card success">
     <img src="assets/fox.svg" alt=""><h2>${passed ? 'Wunderbar !' : 'Encore un tour ?'}</h2>

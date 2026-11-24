@@ -11,12 +11,14 @@ const levelNames = {
 const levelIcons = ['leaf', 'book', 'star'];
 
 function recordingJourneyHTML() {
-  const all = data.lessons.filter(l => l.level === state.level);
-  const remaining = all.filter(l => !isDone(l.id));
-  const current = remaining.find(l => l.id === state.journeyNext?.[state.level]) || remaining[0] || all.at(-1);
-  const completed = all.filter(l => isDone(l.id)).length;
+  const all = reviewedGroups.filter(l => l.level === state.level);
+  const remaining = all.filter(l => !groupDone(l));
+  const savedNext = groupsByClip.get(state.journeyNext?.[state.level])?.id;
+  const current = remaining.find(l => l.id === savedNext) || remaining[0] || all.at(-1);
+  const completed = all.filter(groupDone).length;
   if (!current) return `<div class="journey-header"><h1>Mon parcours</h1>${journeyLevels()}</div>`;
-  const openUnit = foxJourney ? current.unit : state.journeyOpen?.[state.level] ?? current.unit;
+  const savedUnit = state.journeyOpen?.[state.level];
+  const openUnit = !foxJourney && all.some(l => l.unit === savedUnit) ? savedUnit : current.unit;
   const nextLevel = levels[levels.indexOf(state.level) + 1];
   const first = all[0], last = all.at(-1);
   const finished = completed === all.length;
@@ -34,7 +36,7 @@ function recordingJourneyHTML() {
         <div class="world-supports" aria-label="Dans une leçon">${icon('play')} Cours ${icon('book')} PDF et exercices ${icon('mic')} Oral</div>
         ${finished && !assessed ? `<a class="primary" href="${assessmentUrl}">Faire le bilan ${state.level}</a>` :
           finished && nextLevel ? `<a class="primary" href="#path/${nextLevel}">Continuer en ${nextLevel}</a>` : `
-        <button class="primary" data-start="${current.id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : progress(current.id).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
+        <button class="primary" data-start="${groupStart(current).id}">${icon('play')} ${finished ? 'Revoir la dernière leçon' : groupProgress(current).position ? 'Reprendre ma leçon' : 'Commencer ma prochaine leçon'}</button>
         <p class="world-next">${esc(current.title)} · ${lessonMinutes(current)} min</p>`}</div>
       </header>
       <div class="level-boundary">
@@ -50,7 +52,7 @@ function recordingJourneyHTML() {
       </section>
       <footer class="level-boundary level-finish" id="level-finish" tabindex="-1">
         <span class="boundary-icon">${icon('trophy')}</span>
-        <div><strong>${finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${last.id}" class="link-button">${esc(last.title)}</button></div>
+        <div><strong>${finished && assessed ? 'Niveau terminé · ' : 'Fin du niveau '}${state.level}</strong><button data-start="${groupStart(last).id}" class="link-button">${esc(last.title)}</button></div>
         ${nextLevel && assessed ? `<a class="secondary" href="#path/${nextLevel}">Niveau ${nextLevel}</a>` : ''}
       </footer>
     </section><aside class="journey-rail">${dailyPanel()}</aside></div>`;
@@ -63,8 +65,8 @@ function lessonMinutes(l) {
 function journeyChapter(all, current, title, unit, openUnit) {
   const lessons = all.filter(l => l.unit === unit);
   if (!lessons.length) return '';
-  const done = lessons.filter(l => isDone(l.id)).length;
-  const firstUnfinished = lessons.findIndex(l => !isDone(l.id));
+  const done = lessons.filter(groupDone).length;
+  const firstUnfinished = lessons.findIndex(l => !groupDone(l));
   const trailProgress = firstUnfinished < 0 ? 100 : 100 * firstUnfinished / Math.max(1, lessons.length - 1);
   const height = lessons.length * 104 + 16;
   const points = lessons.map((_, i) => [50 + Math.sin(i * 1.4) * 9, i * 104 + 60]);
@@ -81,11 +83,12 @@ function journeyChapter(all, current, title, unit, openUnit) {
     <path class="road-ahead" d="${line}"/><path class="road-done" pathLength="100" style="--travelled:${trailProgress}" d="${line}"/></svg>
     ${lessons.map((l, i) => {
       const next = l.id === (foxJourney?.to || current.id);
-      const p = state.lessons[l.id] || {};
+      const p = groupProgress(l);
+      const start = groupStart(l).id;
       return `<div id="map-${l.id}" class="map-step ${i%2 ? 'label-right' : 'label-left'} ${next ? 'is-current' : ''} ${p.completed ? 'is-complete' : ''}" style="--stop-x:${points[i][0]}%;top:${i*104+29}px">
         ${next ? '<img class="journey-mascot" src="assets/fox.svg" alt="Ta position sur la carte">' : ''}
-        <button class="map-orbit" data-start="${l.id}" aria-label="${esc(l.title)}${p.completed ? ' · terminée' : ''}">${icon(p.completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
-        <button class="map-step-label" data-start="${l.id}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${next && !p.completed ? (p.position ? 'À reprendre · ' : 'Prochaine leçon · ') : ''}${lessonMinutes(l)} min</span></button>
+        <button class="map-orbit" data-start="${start}" aria-label="${esc(l.title)}${p.completed ? ' · terminée' : ''}">${icon(p.completed ? 'check' : l.kind === 'audio' ? 'headphones' : 'play')}</button>
+        <button class="map-step-label" data-start="${start}" tabindex="-1"><strong>${esc(l.title)}</strong><span>${next && !p.completed ? (p.position ? 'À reprendre · ' : 'Prochaine leçon · ') : ''}${lessonMinutes(l)} min</span></button>
       </div>`;
     }).join('')}</div>
   </details>`;
@@ -93,8 +96,8 @@ function journeyChapter(all, current, title, unit, openUnit) {
 
 function journeyLevels() {
   return `<nav class="journey-levels" aria-label="Niveaux d’allemand">${levels.map((level, index) => {
-    const lessons = data.lessons.filter(l => l.level === level);
-    const done = lessons.filter(l => isDone(l.id)).length;
+    const lessons = reviewedGroups.filter(l => l.level === level);
+    const done = lessons.filter(groupDone).length;
     return `<a class="world-card" data-world="${level}" href="#path/${level}" ${level === state.level ? 'aria-current="page"' : ''}>
       <span class="world-card-icon">${icon(levelIcons[index])}</span>
       <span class="world-card-body"><strong>Niveau ${level}</strong><span>${levelNames[level]}</span>
@@ -136,10 +139,11 @@ function updateDailyPanel() {
 }
 
 function nextJourneyLesson(current) {
-  const index = data.lessons.findIndex(l => l.id === current.id);
-  return data.lessons.slice(index + 1).find(l => l.level === current.level && !isDone(l.id))
-    || data.lessons.find(l => l.level === current.level && !isDone(l.id))
-    || data.lessons.slice(index + 1).find(l => !isDone(l.id))
+  const group = reviewedGroup(current);
+  const later = reviewedGroups.slice(reviewedGroups.indexOf(group) + 1);
+  return later.find(l => l.level === current.level && !groupDone(l))
+    || reviewedGroups.find(l => l.level === current.level && !groupDone(l))
+    || later.find(l => !groupDone(l))
     || null;
 }
 

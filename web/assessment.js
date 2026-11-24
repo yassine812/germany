@@ -322,7 +322,7 @@ document.addEventListener('click', event => {
   }
   const next = event.target.closest('[data-continue-level]');
   if (next && route.page === 'assessment') {
-    const following = data.lessons.find(l => l.level === next.dataset.continueLevel && !isDone(l.id));
+    const following = reviewedGroups.find(l => l.level === next.dataset.continueLevel && !groupDone(l));
     if (following) foxJourney = {to:following.id};
     navigate('#path/' + next.dataset.continueLevel);
   }
