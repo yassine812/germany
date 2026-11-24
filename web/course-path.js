@@ -54,41 +54,14 @@ function linkedPageCue(l) {
   return l.pageCues?.find(cue => cue.book === route.bookId && cue.page === route.pdfPage) || null;
 }
 
-function lessonApplication(l) {
-  if (l.topic === 'alphabet' && speechModels.alphabet) {
-    return alphabetQuestions(l).find(question => question.kind === 'dictation');
-  }
-  return l.questions?.find(question => !question.options)
-    || data.topics[l.topic]?.questions.find(question => !question.options);
-}
-
-function lessonGuideHTML(l) {
-  const focus = l.focusRule || data.topics[l.topic]?.rule;
-  const application = lessonApplication(l);
-  const key = 'application:' + l.id;
-  const audio = application?.sample ? exerciseAudioHTML({title:'Dictée du cours',src:pronunciationClip(application.sample,state.voice==='male'?'male':'female')}) : '';
-  return `<section class="lesson-guide">
-    <h2>${icon('leaf')} À retenir dans cette leçon</h2>
-    <p>${esc(focus)}</p>
-    ${application ? `<details><summary>${icon('check')} Appliquer la notion</summary>
-      <div class="application-body">${audio}${answerField(key,application.prompt,state.answers[key])}
-      <button class="secondary" data-check-application>Vérifier</button>
-      <div class="task-feedback" data-application-feedback role="status"></div></div></details>` : ''}
-  </section>`;
-}
-
-document.addEventListener('click', event => {
-  if (!event.target.closest('[data-check-application]') || route.page !== 'lesson') return;
+document.addEventListener('click',event => {
+  if (!event.target.closest('[data-open-lesson-notes]') || route.page!=='lesson') return;
   const l = lesson(route.id);
-  const q = lessonApplication(l);
-  const answer = $('.lesson-guide [data-guided-answer]').value.trim();
-  const feedback = $('[data-application-feedback]');
-  if (!answer) {
-    feedback.textContent = 'Écris ta réponse pour la vérifier.';
-    return;
-  }
-  const ok = q.kind === 'dictation' ? matchesSpeechAnswer(q,answer) : normalize(answer) === normalize(q.answer);
-  feedback.innerHTML = `<div class="part-result ${ok?'correct':'review'}"><strong>${ok?'Correct ✓':'Réponse attendue'}</strong>
-    ${ok?'':` <span lang="de">${esc(q.model?.text || q.answer)}</span>`}
-    <p>${esc(q.explanation)}</p></div>`;
+  const paper = activePaper();
+  const previous = paper && state.answers[paper.book+':'+paper.page];
+  const point = l.focusRule || data.topics[l.topic]?.rule;
+  $('#settings-content').innerHTML = `<h2>Mes notes</h2>${point?`<p>${esc(point)}</p>`:''}
+    <textarea class="note-area" id="lesson-notes" aria-label="Mes notes sur cette leçon" placeholder="Écris tes notes ici…">${esc(state.notes[l.id]||'')}</textarea>
+    ${previous?`<details><summary>Ma note précédente sur cette page</summary><p>${esc(previous)}</p></details>`:''}`;
+  $('#settings').showModal();
 });

@@ -33,15 +33,11 @@ function classroomLessonHTML(l){
         ${mediaHTML(l)}
         <div class="classroom-video-actions">
           <button class="link-button ${p.watch?'checked':''}" data-study-mark="watch">${icon('check')}${p.watch?'Écoute terminée':'Valider l’écoute'}</button>
-          <button class="link-button" data-jump-exercises>${icon('book')} Lire et répondre</button>
-          <button class="link-button" data-toggle-extras>${icon('headphones')} Notes et voix</button>
+          <button class="link-button" data-jump-exercises>${icon('book')} Exercices de la page</button>
+          <button class="link-button" data-open-lesson-notes>${icon('book')} Mes notes</button>
         </div>
       </section>
-      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${lessonGuideHTML(l)}${exercisePanelHTML(l)}</section>
-      <details class="classroom-extras"><summary>Notes et prononciation</summary>
-        <textarea class="note-area" id="lesson-notes" aria-label="Mes notes" placeholder="Une règle à retenir…">${esc(state.notes[l.id]||'')}</textarea>
-        ${audioHTML(l.topic)}
-      </details>
+      <section class="classroom-answers" id="classroom-answers" tabindex="-1" aria-label="Réponses et correction">${exercisePanelHTML(l)}</section>
     </aside>
   </div>`;
 }
@@ -69,16 +65,80 @@ function answerBase(p,t){return `${p.book}:${p.page}:ex${t.id}`;}
 function answerField(key,label,value,multiline=false){
   return `<label class="guided-answer-label">${esc(label)}${multiline?`<textarea data-guided-answer="${esc(key)}" lang="de" spellcheck="false" placeholder="Ta réponse en allemand…">${esc(value||'')}</textarea>`:`<input data-guided-answer="${esc(key)}" value="${esc(value||'')}" lang="de" spellcheck="false" autocomplete="off" placeholder="Ta réponse…">`}</label>`;
 }
-function exercisePanelHTML(l){
-  const p=activePaper();if(!p)return '<p class="muted">Ouvre une page pour répondre.</p>';
-  const b=book(p.book),tasks=data.exercisePages?.books?.[b.id]?.[String(p.page)]?.tasks||[],pack=data.bookAudio?.[b.id]?.tracks||[];
-  const pageFinish = route.page==='assessment' ? assessmentFinishPageHTML() : !l ? '<button class="study-check" data-finish-page>'+icon('check')+' Valider cette page</button>' : '';
-  if(!tasks.length){const key=p.book+':'+p.page;return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button><h2>À toi d’écrire</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div><p class="coach-instruction">Le PDF reste ouvert pendant que tu écris.</p>${answerField(key,'Mes réponses ou ma phrase',state.answers[key],true)}<button class="secondary full" data-grammar-key="${key}">Vérifier ma phrase</button><div class="grammar-result" data-grammar-result="${key}" aria-live="polite"></div>${bookAudioHTML(b,p)}${l?`<button class="study-check" data-study-mark="read">${icon('check')}J’ai travaillé cette page</button>`:pageFinish}`;}
-  return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button><h2>Exercices & correction</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div><p class="coach-instruction">Choisis un exercice : il est mis en évidence dans le PDF.</p>${tasks.map((t,index)=>{
-    const correction=solutionFor(b,t),key=answerBase(p,t),tracks=t.tracks.map(id=>pack.find(a=>a.id===id)).filter(Boolean);
-    const fields=correction?correction.parts.map((part,i)=>answerField(key+':part'+i,part.label,state.answers[key+':part'+i],part.open||part.expected.length>90)).join(''):answerField(key,'Ma réponse',state.answers[key],true);
-    return `<details class="guided-task" data-guided-task="${t.id}" ${index===0?'open':''}><summary><span class="exercise-number">${t.number}</span><span>${esc(t.label||'Exercice '+t.number)}<small>${esc(t.section)}</small></span><span class="task-correction-label">${correction?'Corrigé':'Écrire'}</span></summary><div class="guided-task-body">${tracks.map(exerciseAudioHTML).join('')}${correction?.instruction?`<p class="coach-instruction">${esc(correction.instruction)}</p>`:''}${fields}<div class="answer-save-message" data-guided-status>Sauvegarde automatique</div><div class="guided-keyboard">${['ä','ö','ü','ß'].map(char=>`<button data-guided-letter="${char}" aria-label="Insérer ${char}">${char}</button>`).join('')}</div><button class="link-button focus-task-button" data-focus-task="${t.id}">${icon('book')} Voir dans le PDF</button><button class="primary full" data-check-task="${t.id}">${correction?'Vérifier mes réponses':'Conseils pour ma réponse'}</button><div class="task-feedback" data-task-feedback="${t.id}" aria-live="polite"></div>${correction?`<details class="answer-reference"><summary>Voir le corrigé</summary><dl>${correction.parts.map(part=>`<dt>${esc(part.label)}</dt><dd lang="de">${esc(part.open?'Réponse personnelle : plusieurs réponses sont possibles.':part.expected)}</dd>`).join('')}</dl><a href="${esc(correction.source)}" target="_blank" rel="noopener">${esc(correction.sourceName||'Source du corrigé · Hueber')}</a></details>`:''}${state.answers[key]&&correction?`<details class="old-answer"><summary>Mes réponses précédentes</summary><p>${esc(state.answers[key])}</p></details>`:''}</div></details>`;
-  }).join('')}<details class="extra-page-listening"><summary>Autres écoutes de cette page ou du chapitre</summary>${bookAudioHTML(b,p,new Set(tasks.flatMap(t=>t.tracks)))}</details>${l?`<button class="study-check ${progress(l.id).read?'checked':''}" data-study-mark="read">${icon('check')}J’ai travaillé mes exercices</button>`:pageFinish}`;
+function choiceAnswerField(key,label,value,choices) {
+  return `<label class="guided-answer-label">${esc(label)}
+    <select data-guided-answer="${esc(key)}"><option value="">Choisir</option>${choices.map(option =>
+      `<option value="${esc(option)}" ${normalizedAnswer(value)===normalizedAnswer(option)?'selected':''}>${esc(option)}</option>`).join('')}</select>
+    </label>`;
+}
+
+function taskChoices(part) {
+  if (part.open) return null;
+  const answer = normalizedAnswer(part.expected);
+  if (['richtig','falsch'].includes(answer)) return ['Richtig','Falsch'];
+  if (['ja','nein'].includes(answer)) return ['Ja','Nein'];
+  return null;
+}
+
+function taskResponse(t) {
+  const label = t.label || '';
+  const writing = /verfass|schreiben sie (?:über|eine?n? (?:e-mail|brief|text|bericht|einladung))|schriftlich beantworten/iu.test(label);
+  if (writing) return 'writing';
+  if (/sprechen|aussprache/iu.test(t.section || '') || /^sprechen sie|^spielen sie|^sprechen sie nach|^lesen sie laut/iu.test(label)) return 'oral';
+  return 'short';
+}
+
+function printedTaskHTML(b,p,l,t,index) {
+  const correction = solutionFor(b,t);
+  const key = answerBase(p,t);
+  const pack = data.bookAudio?.[b.id]?.tracks || [];
+  const tracks = (t.tracks || []).map(id => pack.find(audio => audio.id===id)).filter(Boolean);
+  const mode = taskResponse(t);
+  const oral = !correction && mode==='oral';
+  let fields = '';
+  if (correction) {
+    fields = correction.parts.map((part,i) => {
+      const fieldKey = key + ':part' + i;
+      const choices = taskChoices(part);
+      return choices ? choiceAnswerField(fieldKey,part.label,state.answers[fieldKey],choices) :
+        answerField(fieldKey,part.label,state.answers[fieldKey],part.open || part.expected.length>90);
+    }).join('');
+  } else if (!oral) {
+    fields = answerField(key, mode==='writing' ? 'Rédige le texte demandé' : 'Réponse à cet exercice',state.answers[key],mode==='writing');
+  }
+  const action = oral ? (l ? `<button class="secondary" data-tab="practice">${icon('mic')} S’entraîner à l’oral</button>` : '') :
+    `<button class="primary full" data-check-task="${t.id}">${correction?'Vérifier mes réponses':'Relire ma réponse'}</button>`;
+  return `<details class="guided-task" data-guided-task="${t.id}" ${index===0?'open':''}>
+    <summary><span class="exercise-number">${t.number}</span><span>${esc(t.label||'Exercice '+t.number)}<small>${esc(t.section)}</small></span>
+    ${oral?'<span class="task-correction-label">Oral</span>':''}</summary>
+    <div class="guided-task-body">
+      ${tracks.map(exerciseAudioHTML).join('')}${correction?.instruction?`<p class="exercise-prompt">${esc(correction.instruction)}</p>`:''}
+      ${fields}${fields?'<div class="answer-save-message" data-guided-status></div>':''}
+      <button class="link-button focus-task-button" data-focus-task="${t.id}">${icon('book')} Voir dans le PDF</button>
+      ${action}<div class="task-feedback" data-task-feedback="${t.id}" aria-live="polite"></div>
+      ${correction?`<details class="answer-reference"><summary>Voir le corrigé</summary>
+        <dl>${correction.parts.map(part=>`<dt>${esc(part.label)}</dt><dd lang="de">${esc(part.open?'Réponse personnelle':part.expected)}</dd>`).join('')}</dl>
+        <a href="${esc(correction.source)}" target="_blank" rel="noopener">${esc(correction.sourceName||'Source du corrigé · Hueber')}</a></details>`:''}
+      ${state.answers[key]&&correction?`<details class="old-answer"><summary>Ma réponse précédente</summary><p>${esc(state.answers[key])}</p></details>`:''}
+    </div></details>`;
+}
+
+function exercisePanelHTML(l) {
+  const p = activePaper();
+  if (!p) return '';
+  const b = book(p.book);
+  const printed = data.exercisePages?.books?.[b.id]?.[p.page]?.tasks || [];
+  const guided = printed.length ? [] : notesTasks(p,l);
+  const hasExercises = printed.length || guided.length;
+  const pageFinish = route.page === 'assessment' ? assessmentFinishPageHTML() :
+    l ? `<button class="study-check ${progress(l.id).read?'checked':''}" data-study-mark="read">${icon('check')}
+      ${progress(l.id).read ? 'Exercices terminés' : hasExercises ? 'Terminer les exercices' : 'Marquer la page lue'}</button>` :
+    '<button class="study-check" data-finish-page>' + icon('check') + ' Valider cette page</button>';
+  const body = printed.length ? printed.map((task,i) => printedTaskHTML(b,p,l,task,i)).join('') :
+    guided.length ? notesExerciseHTML(p,l,guided) : '<p class="reading-only">Cette page est à lire. Elle ne contient pas d’exercice interactif.</p>';
+  return `<div class="coach-heading"><button class="answers-close" data-toggle-exercises aria-label="Fermer les réponses">×</button>
+    <h2>Exercices de la page</h2><span>${p.printed?'p. '+p.printed:'PDF '+p.page}</span></div>
+    <div class="page-task-list">${body}</div>${pageFinish}`;
 }
 
 function normalizedAnswer(text){return String(text||'').normalize('NFC').toLocaleLowerCase('de-DE').replace(/[’‘`]/g,"'").replace(/[.,;:!?–—_()\[\]«»"']/g,' ').replace(/\s+/g,' ').trim();}
@@ -120,7 +180,12 @@ function checkCurrentTask(id){
   const p=activePaper(),b=book(p.book),task=data.exercisePages?.books?.[b.id]?.[String(p.page)]?.tasks.find(t=>t.id===id);if(!task)return;
   const correction=solutionFor(b,task),key=answerBase(p,task),feedback=document.querySelector(`[data-task-feedback="${id}"]`);
   if(!correction){feedback.innerHTML=grammarHTML(state.answers[key]||'');return;}
-  const checked=correction.parts.map((part,i)=>({...gradeClosedAnswer(state.answers[key+':part'+i]||'',part),part,index:i}));
+  const checked=correction.parts.map((part,i)=>{
+    const value=state.answers[key+':part'+i]||'';
+    const exactChoice=taskChoices(part)&&normalizedAnswer(value)===normalizedAnswer(part.expected);
+    const result=exactChoice?{status:'correct',message:'Correct ✓'}:gradeClosedAnswer(value,part);
+    return {...result,part,index:i};
+  });
   feedback.innerHTML=checked.map(c=>`<div class="part-result ${c.status}"><strong>${esc(c.part.label)} · ${esc(c.message)}</strong>${c.expected?`<p>Réponse attendue : <span lang="de">${esc(c.expected)}</span></p>`:''}${c.status==='open'?grammarHTML(state.answers[key+':part'+c.index]||''):''}</div>`).join('');
   const closed=checked.filter(c=>c.status!=='open');if(closed.length&&closed.every(c=>c.status==='correct')&&route.page==='lesson'){progress(route.id).read=true;save();}
 }
@@ -168,7 +233,7 @@ function focusCourseRegion(cue,manual=false) {
 }
 
 function percentSplit(value) {
-  return Number.isFinite(value) ? Math.round(Math.min(65, Math.max(35, value))) : 50;
+  return Number.isFinite(value) ? Math.round(Math.min(65, Math.max(35, value))) : 55;
 }
 
 function bindStudyDivider() {
@@ -201,18 +266,18 @@ function bindStudyDivider() {
     divider.classList.remove('dragging');
     save();
   });
-  divider.addEventListener('dblclick', () => { resize(50); save(); });
+  divider.addEventListener('dblclick', () => { resize(percentSplit()); save(); });
 }
 
 function bindClassroom(){
   hideWordCard();
-  document.body.classList.remove('extras-open','answers-open');
+  document.body.classList.remove('answers-open');
   document.body.classList.toggle('in-classroom',(route.page==='lesson'&&route.tab!=='practice')||route.page==='book'||(route.page==='assessment'&&route.tab!=='result'));
   appliedPDFCue = null;
   loadPDFWords();bindPaperAspect();bindExerciseAudio();bindStudyDivider();
   if(!document.getElementById('pdf-word-card')){const box=document.createElement('aside');box.id='pdf-word-card';box.className='word-card';box.hidden=true;box.setAttribute('aria-label','Traduction du mot');document.body.append(box);}
 }
-function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');const l=lesson(route.id);if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():(l?lessonGuideHTML(l):'')+exercisePanelHTML(l);if(route.page==='assessment')saveAssessmentPage(readerState.index);bindPaperAspect();loadPDFWords();bindBookAudio();bindExerciseAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
+function afterPDFPageChange(){const panel=document.getElementById('classroom-answers');const l=lesson(route.id);if(panel)panel.innerHTML=route.page==='assessment'?assessmentPaperHTML():exercisePanelHTML(l);if(route.page==='assessment')saveAssessmentPage(readerState.index);bindPaperAspect();loadPDFWords();bindBookAudio();bindExerciseAudio();hideWordCard();const resume=$('[data-rejoin-course]');if(resume&&pdfHeldCue!==null)resume.hidden=false;}
 function holdCurrentPDFCue() {
   const media = document.getElementById('recording');
   if (!media || route.page !== 'lesson') return;
@@ -276,18 +341,10 @@ document.addEventListener('click',e=>{
     answers.focus({preventScroll:true});
     answers.scrollIntoView({block:'start'});
   }
-  if(e.target.closest('[data-toggle-extras]')){
-    const extras=document.querySelector('.classroom-extras');
-    if(extras){
-      extras.open=true;
-      extras.querySelector('summary').focus({preventScroll:true});
-      extras.scrollIntoView({block:'start'});
-    }
-  }
+
 });
 document.addEventListener('change',e=>{if(e.target.id==='reader-page')holdCurrentPDFCue();});
 document.addEventListener('focusin',e=>{if(e.target.matches('[data-guided-answer]'))lastGuidedField=e.target;});
-document.addEventListener('toggle',e=>{if(e.target.matches('.classroom-extras')&&!e.target.open)document.body.classList.remove('extras-open');},true);
 document.addEventListener('submit',e=>{if(e.target.id==='pdf-word-search'){e.preventDefault();openPDFWord(new FormData(e.target).get('word'));}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideWordCard();});
 async function checkClassroomVersion(){if(!window.DEUTSCHWEG_BUILD)return;try{const r=await fetch('/api/version',{cache:'no-store'}),v=await r.json();if(v.id!==window.DEUTSCHWEG_BUILD&&!document.getElementById('version-refresh')){const button=document.createElement('button');button.id='version-refresh';button.className='version-refresh';button.textContent='Une nouvelle version est prête · Actualiser';button.onclick=()=>{persistMedia();save();location.reload()};document.body.append(button);}}catch{}}

@@ -5,7 +5,7 @@ let wordDismissTimer;
 let hoveredPDFWord;
 
 function paperView() {
-  return state.pdfViewMode || (window.innerWidth > 740 ? 'page' : 'width');
+  return state.paperLayout || 'width';
 }
 
 function bindPaperAspect() {
@@ -95,7 +95,7 @@ document.addEventListener('click', event => {
   }
   if (event.target.closest('[data-pdf-expand]')) toggleReaderFocus();
   if (event.target.closest('[data-paper-view]')) {
-    state.pdfViewMode = paperView() === 'page' ? 'width' : 'page';
+    state.paperLayout = paperView() === 'page' ? 'width' : 'page';
     state.bookZoom = 1;
     save();
     updateReader();

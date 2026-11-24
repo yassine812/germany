@@ -51,7 +51,7 @@ function lessonPage(l){return integratedLessonHTML(l)}
 function prepareReader(l,bid=null,page=1){
   const pages=l?getPages(l):book(bid).pages.map(p=>({...p,book:bid,title:book(bid).title}));
   const linked = l && route.bookId ? pages.findIndex(p=>p.book===route.bookId&&p.page===route.pdfPage) : -1;
-  const key=l?l.id+(linked>=0?':'+route.bookId+':'+route.pdfPage:''):bid;
+  const key=l?l.id+(linked>=0?':'+route.bookId+':'+route.pdfPage:''):bid+':'+page;
   if(readerState?.key!==key)readerState={key,lessonId:l?.id,pages,index:l?Math.max(0,linked):Math.max(0,Math.min(pages.length-1,page-1))};
   else readerState.pages=pages;
   return readerState;
